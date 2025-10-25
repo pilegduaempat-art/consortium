@@ -68,19 +68,30 @@ def list_profits_df():
 
 # ----------------------- Allocation & calculations -----------------------
 def allocations_for_date(target_date):
-    # target_date is string 'YYYY-MM-DD'
+    # target_date bisa berupa string, datetime, atau date
     clients = list_clients_df()
     if clients.empty:
         return pd.DataFrame(columns=["id","name","invested","join_date","active","share","alloc_profit"])
+    
     clients["join_date"] = pd.to_datetime(clients["join_date"]).dt.date
-    target = datetime.strptime(target_date, "%Y-%m-%d").date()
+    
+    # Normalisasi tipe tanggal
+    if isinstance(target_date, str):
+        target = datetime.strptime(target_date, "%Y-%m-%d").date()
+    elif isinstance(target_date, datetime):
+        target = target_date.date()
+    else:
+        target = target_date
+
     clients["active"] = clients["join_date"] <= target
     active_sum = clients.loc[clients["active"], "invested"].sum()
+    
     if active_sum == 0:
         clients["share"] = 0.0
     else:
         clients["share"] = clients["invested"] / active_sum
         clients.loc[~clients["active"], "share"] = 0.0
+    
     return clients
 
 def compute_client_timeseries():
