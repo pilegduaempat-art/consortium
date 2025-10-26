@@ -1,7 +1,7 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -616,23 +616,26 @@ def admin_panel():
                 share_df = pd.DataFrame(share_data)
                 
                 # Sorting and filtering options
+                st.markdown("### ⚙️ Filter & Sort Options")
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     sort_by = st.selectbox(
                         "Sort by",
                         ["Profit Date", "Client ID", "Share Profit", "Total Balance"],
-                        index=0
+                        index=0,
+                        key="sort_by_select"
                     )
                 
                 with col2:
-                    sort_order = st.radio("Order", ["Descending", "Ascending"], horizontal=True)
+                    sort_order = st.radio("Order", ["Descending", "Ascending"], horizontal=True, key="sort_order_radio")
                 
                 with col3:
                     filter_client = st.multiselect(
                         "Filter by Client",
                         options=clients_df['id'].tolist(),
-                        format_func=lambda x: f"ID {x} - {clients_df[clients_df['id']==x]['name'].iloc[0]}"
+                        format_func=lambda x: f"ID {x} - {clients_df[clients_df['id']==x]['name'].iloc[0]}",
+                        key="filter_client_multi"
                     )
                 
                 # Apply filters
@@ -698,10 +701,12 @@ def admin_panel():
                 # Download button
                 st.markdown("---")
                 csv = display_df.to_csv(index=False)
+                from datetime import date as date_class
+                today_date = date_class.today()
                 st.download_button(
                     label="📥 Download as CSV",
                     data=csv,
-                    file_name=f"share_profit_distribution_{date.today().isoformat()}.csv",
+                    file_name=f"share_profit_distribution_{today_date.isoformat()}.csv",
                     mime="text/csv",
                     use_container_width=True
                 )
