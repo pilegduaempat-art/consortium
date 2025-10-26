@@ -768,44 +768,66 @@ def client_login_page():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Get list of clients for dropdown
-        clients_df = list_clients_df()
-        
-        if clients_df.empty:
-            st.warning("⚠️ No clients registered yet. Please contact admin.")
-            return
-        
         with st.form("client_login_form"):
             st.markdown("### 🔑 Client Login")
             
-            client_options = {row['id']: f"{row['name']} (ID: {row['id']})" 
-                            for _, row in clients_df.iterrows()}
-            
-            selected_id = st.selectbox(
-                "Select Your Account",
-                options=list(client_options.keys()),
-                format_func=lambda x: client_options[x]
+            client_id_input = st.text_input(
+                "Client ID",
+                placeholder="Enter your Client ID (e.g., 1, 2, 3)",
+                help="Your Client ID was provided by the administrator"
             )
             
-            password = st.text_input("Password", type="password", placeholder="Enter your password")
-            submit = st.form_submit_button("🚀 Login as Client", use_container_width=True)
+            password = st.text_input(
+                "Password",
+                type="password",
+                placeholder="Enter your password"
+            )
+            
+            submit = st.form_submit_button("🚀 Login", use_container_width=True)
             
             if submit:
-                if verify_client(selected_id, password):
-                    st.session_state["user_type"] = "client"
-                    st.session_state["client_id"] = selected_id
-                    client_name = clients_df[clients_df['id'] == selected_id].iloc[0]['name']
-                    st.session_state["client_name"] = client_name
-                    st.success(f"✅ Welcome, {client_name}! Redirecting...")
-                    st.rerun()
+                if not client_id_input:
+                    st.error("⚠️ Please enter your Client ID")
+                elif not password:
+                    st.error("⚠️ Please enter your password")
                 else:
-                    st.error("❌ Invalid password. Please try again.")
+                    try:
+                        client_id = int(client_id_input)
+                        
+                        # Check if client exists
+                        client_data = get_client_by_id(client_id)
+                        if not client_data:
+                            st.error("❌ Client ID not found. Please check your ID and try again.")
+                        elif verify_client(client_id, password):
+                            st.session_state["user_type"] = "client"
+                            st.session_state["client_id"] = client_id
+                            st.session_state["client_name"] = client_data["name"]
+                            st.success(f"✅ Welcome, {client_data['name']}! Redirecting...")
+                            st.rerun()
+                        else:
+                            st.error("❌ Invalid password. Please try again.")
+                    except ValueError:
+                        st.error("⚠️ Client ID must be a number")
         
         with st.expander("ℹ️ Need Help?"):
             st.info("**First time logging in?** Your default password is: `client123`")
-            st.info("If you forgot your password, please contact the administrator.")
-            st.info("Your Client ID can be found in communications from the administrator.")
-            st.warning("⚠️ Please change your default password after first login by contacting admin.")
+            st.info("**Your Client ID** was provided by the administrator when your account was created.")
+            st.warning("⚠️ Please contact administrator to:")
+            st.markdown("""
+            - Get your Client ID if you don't have it
+            - Reset your password if forgotten
+            - Change your default password for security
+            """)
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Security notice
+        st.markdown("""
+        <div style='background: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;'>
+            <strong>🔒 Security Notice:</strong><br>
+            Never share your Client ID or password with anyone. The administrator will never ask for your password.
+        </div>
+        """, unsafe_allow_html=True)
 
 # ----------------------- Main Application -----------------------
 def main():
