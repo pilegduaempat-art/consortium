@@ -31,12 +31,12 @@ def load_css():
         --cyber-purple: #8b5cf6;
         --cyber-yellow: #ffbe0b;
         --cyber-green: #06ffa5;
-        --bg-dark: #0a0e27;
-        --bg-secondary: #0f1421;
-        --bg-card: #141b2d;
-        --text-primary: #ffffff;
-        --text-secondary: #8892b0;
-        --border-color: #1e293b;
+        --bg-dark: #1a1f35;
+        --bg-secondary: #232946;
+        --bg-card: #2d3250;
+        --text-primary: #eef0f2;
+        --text-secondary: #b8c1ec;
+        --border-color: #3d4466;
         --border-glow: rgba(0, 245, 255, 0.3);
     }
     
@@ -44,8 +44,8 @@ def load_css():
     .stApp {
         background-color: var(--bg-dark);
         background-image: 
-            linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+            linear-gradient(rgba(0, 245, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 245, 255, 0.05) 1px, transparent 1px);
         background-size: 50px 50px;
         color: var(--text-primary);
         font-family: 'Rajdhani', sans-serif;
@@ -58,7 +58,7 @@ def load_css():
     
     /* Cyberpunk metric cards with neon glow */
     .metric-card {
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(0, 245, 255, 0.1) 100%);
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(0, 245, 255, 0.2) 100%);
         padding: 24px;
         border-radius: 12px;
         border: 2px solid transparent;
@@ -66,11 +66,12 @@ def load_css():
         position: relative;
         overflow: hidden;
         box-shadow: 
-            0 0 20px rgba(0, 245, 255, 0.2),
-            inset 0 0 20px rgba(139, 92, 246, 0.1);
+            0 0 30px rgba(0, 245, 255, 0.3),
+            inset 0 0 30px rgba(139, 92, 246, 0.15);
         transition: all 0.3s ease;
         color: white;
         margin: 10px 0;
+        backdrop-filter: blur(10px);
     }
     
     .metric-card::before {
@@ -165,7 +166,7 @@ def load_css():
     .stTextArea textarea,
     .stSelectbox>div>div>div,
     .stDateInput>div>div>input {
-        background-color: rgba(20, 27, 45, 0.8);
+        background-color: rgba(45, 50, 80, 0.9);
         border: 2px solid var(--border-color);
         border-radius: 8px;
         padding: 12px;
@@ -179,8 +180,8 @@ def load_css():
     .stNumberInput>div>div>input:focus,
     .stTextArea textarea:focus {
         border-color: var(--cyber-blue);
-        box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
-        background-color: rgba(20, 27, 45, 1);
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+        background-color: rgba(45, 50, 80, 1);
     }
     
     /* DataFrame with cyber styling */
@@ -200,9 +201,9 @@ def load_css():
     
     /* Sidebar with cyber effect */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0f1421 0%, #0a0e27 100%);
+        background: linear-gradient(180deg, #232946 0%, #1a1f35 100%);
         border-right: 2px solid var(--cyber-blue);
-        box-shadow: inset -10px 0 30px rgba(0, 245, 255, 0.1);
+        box-shadow: inset -10px 0 30px rgba(0, 245, 255, 0.15);
     }
     
     [data-testid="stSidebar"] .stMarkdown {
@@ -216,7 +217,7 @@ def load_css():
     
     /* Expander with neon borders */
     .streamlit-expanderHeader {
-        background-color: rgba(20, 27, 45, 0.6);
+        background-color: rgba(45, 50, 80, 0.8);
         border: 2px solid var(--border-color);
         border-radius: 8px;
         color: var(--text-primary);
@@ -227,8 +228,8 @@ def load_css():
     
     .streamlit-expanderHeader:hover {
         border-color: var(--cyber-blue);
-        box-shadow: 0 0 15px rgba(0, 245, 255, 0.3);
-        background-color: rgba(20, 27, 45, 0.8);
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+        background-color: rgba(45, 50, 80, 1);
     }
     
     .streamlit-expanderContent {
@@ -291,7 +292,7 @@ def load_css():
         font-family: 'Orbitron', sans-serif;
         text-transform: uppercase;
         letter-spacing: 3px;
-        text-shadow: 0 0 20px var(--cyber-blue);
+        text-shadow: 0 0 15px var(--cyber-blue), 0 0 30px rgba(0, 245, 255, 0.5);
     }
     
     h2 {
@@ -301,10 +302,11 @@ def load_css():
         text-transform: uppercase;
         letter-spacing: 2px;
         margin-top: 2rem;
+        text-shadow: 0 0 10px var(--cyber-blue);
     }
     
     h3 {
-        color: var(--text-secondary);
+        color: var(--text-primary);
         font-weight: 600;
         font-family: 'Rajdhani', sans-serif;
     }
@@ -371,11 +373,12 @@ def load_css():
     
     /* Form styling */
     [data-testid="stForm"] {
-        background: linear-gradient(135deg, rgba(20, 27, 45, 0.6) 0%, rgba(15, 20, 33, 0.6) 100%);
+        background: linear-gradient(135deg, rgba(45, 50, 80, 0.8) 0%, rgba(35, 41, 70, 0.8) 100%);
         border: 2px solid var(--border-color);
         border-radius: 12px;
         padding: 24px;
-        box-shadow: 0 0 30px rgba(0, 245, 255, 0.1);
+        box-shadow: 0 0 30px rgba(0, 245, 255, 0.15);
+        backdrop-filter: blur(10px);
     }
     
     /* Divider with glow */
