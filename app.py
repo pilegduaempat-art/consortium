@@ -406,7 +406,7 @@ def admin_panel():
     st.markdown("<br>", unsafe_allow_html=True)
     
     # Tabs for better organization
-    tab1, tab2 = st.tabs(["👥 Client Management", "💹 Profit Management"])
+    tab1, tab2, tab3 = st.tabs(["👥 Client Management", "💹 Profit Management", "📊 Share Profit"])
     
     with tab1:
         st.subheader("Client Management")
@@ -561,6 +561,214 @@ def admin_panel():
                             st.rerun()
             else:
                 st.info("📭 No profit entries yet. Add your first entry to get started!")
+    
+    with tab3:
+        st.subheader("📊 Profit Share Distribution")
+        st.markdown("View detailed profit distribution across all clients and dates")
+        
+        clients_df = list_clients_df()
+        profits_df = list_profits_df()
+        
+        if clients_df.empty:
+            st.warning("⚠️ No clients registered yet. Please add clients first.")
+        elif profits_df.empty:
+            st.warning("⚠️ No profit entries yet. Please add profit entries first.")
+        else:
+            # Get timeseries data for all clients
+            result, _, _ = compute_client_timeseries()
+            
+            # Build comprehensive share profit table
+            share_data = []
+            
+            for client_id, client_ts in result.items():
+                client_info = clients_df[clients_df['id'] == client_id].iloc[0]
+                
+                if len(client_ts['dates']) > 0:
+                    for idx, date in enumerate(client_ts['dates']):
+                        profit_row = profits_df[pd.to_datetime(profits_df['profit_date']).dt.date == date]
+                        
+                        if not profit_row.empty:
+                            daily_profit = profit_row.iloc[0]['total_profit']
+                            
+                            # Calculate share for this date
+                            allocs = allocations_for_date(date.isoformat())
+                            client_alloc = allocs[allocs['id'] == client_id]
+                            
+                            if not client_alloc.empty and client_alloc.iloc[0]['active']:
+                                share_pct = client_alloc.iloc[0]['share']
+                                share_amount = daily_profit * share_pct
+                                cumulative_gain = client_ts['cumulative_gain'][idx]
+                                total_balance = client_info['invested'] + cumulative_gain
+                                
+                                share_data.append({
+                                    'Client ID': client_id,
+                                    'Client Name': client_info['name'],
+                                    'Profit Date': date,
+                                    'Initial Invested': client_info['invested'],
+                                    'Share (%)': share_pct * 100,
+                                    'Daily Profit': daily_profit,
+                                    'Share Profit': share_amount,
+                                    'Cumulative Profit': cumulative_gain,
+                                    'Total Balance': total_balance
+                                })
+            
+            if share_data:
+                share_df = pd.DataFrame(share_data)
+                
+                # Sorting and filtering options
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    sort_by = st.selectbox(
+                        "Sort by",
+                        ["Profit Date", "Client ID", "Share Profit", "Total Balance"],
+                        index=0
+                    )
+                
+                with col2:
+                    sort_order = st.radio("Order", ["Descending", "Ascending"], horizontal=True)
+                
+                with col3:
+                    filter_client = st.multiselect(
+                        "Filter by Client",
+                        options=clients_df['id'].tolist(),
+                        format_func=lambda x: f"ID {x} - {clients_df[clients_df['id']==x]['name'].iloc[0]}"
+                    )
+                
+                # Apply filters
+                display_df = share_df.copy()
+                if filter_client:
+                    display_df = display_df[display_df['Client ID'].isin(filter_client)]
+                
+                # Apply sorting
+                sort_col_map = {
+                    "Profit Date": "Profit Date",
+                    "Client ID": "Client ID",
+                    "Share Profit": "Share Profit",
+                    "Total Balance": "Total Balance"
+                }
+                ascending = sort_order == "Ascending"
+                display_df = display_df.sort_values(sort_col_map[sort_by], ascending=ascending)
+                
+                # Format for display
+                format_df = display_df.copy()
+                format_df['Profit Date'] = pd.to_datetime(format_df['Profit Date']).dt.strftime('%d %b %Y')
+                format_df['Initial Invested'] = format_df['Initial Invested'].apply(lambda x: f"Rp {x:,.0f}")
+                format_df['Share (%)'] = format_df['Share (%)'].apply(lambda x: f"{x:.2f}%")
+                format_df['Daily Profit'] = format_df['Daily Profit'].apply(
+                    lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}"
+                )
+                format_df['Share Profit'] = format_df['Share Profit'].apply(
+                    lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}"
+                )
+                format_df['Cumulative Profit'] = format_df['Cumulative Profit'].apply(
+                    lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}"
+                )
+                format_df['Total Balance'] = format_df['Total Balance'].apply(lambda x: f"Rp {x:,.0f}")
+                
+                # Display summary metrics
+                st.markdown("### 📈 Summary Statistics")
+                col1, col2, col3, col4 = st.columns(4)
+                
+                total_records = len(display_df)
+                total_share_profit = display_df['Share Profit'].sum()
+                avg_share_profit = display_df['Share Profit'].mean()
+                unique_clients = display_df['Client ID'].nunique()
+                
+                with col1:
+                    st.metric("Total Records", f"{total_records:,}")
+                with col2:
+                    st.metric("Total Shared Profit", f"Rp {total_share_profit:,.0f}")
+                with col3:
+                    st.metric("Avg Share Profit", f"Rp {avg_share_profit:,.0f}")
+                with col4:
+                    st.metric("Active Clients", unique_clients)
+                
+                st.markdown("---")
+                
+                # Display main table
+                st.markdown("### 📋 Detailed Share Profit Table")
+                st.dataframe(
+                    format_df,
+                    use_container_width=True,
+                    height=500,
+                    hide_index=True
+                )
+                
+                # Download button
+                st.markdown("---")
+                csv = display_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download as CSV",
+                    data=csv,
+                    file_name=f"share_profit_distribution_{date.today().isoformat()}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+                
+                # Additional analytics
+                with st.expander("📊 View Analytics Charts"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Profit distribution by client
+                        st.markdown("#### Total Profit by Client")
+                        client_totals = display_df.groupby(['Client ID', 'Client Name'])['Share Profit'].sum().reset_index()
+                        client_totals = client_totals.sort_values('Share Profit', ascending=False)
+                        
+                        fig = go.Figure(go.Bar(
+                            x=client_totals['Share Profit'],
+                            y=client_totals['Client Name'],
+                            orientation='h',
+                            marker=dict(
+                                color=client_totals['Share Profit'],
+                                colorscale='Viridis',
+                                showscale=False
+                            ),
+                            text=client_totals['Share Profit'].apply(lambda x: f"Rp {x:,.0f}"),
+                            textposition='outside',
+                            hovertemplate='<b>%{y}</b><br>Total: Rp %{x:,.0f}<extra></extra>'
+                        ))
+                        
+                        fig.update_layout(
+                            xaxis_title="Total Share Profit (Rp)",
+                            yaxis_title="Client",
+                            height=400,
+                            template="plotly_white",
+                            showlegend=False
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                    
+                    with col2:
+                        # Profit trend over time
+                        st.markdown("#### Profit Trend Over Time")
+                        date_totals = display_df.groupby('Profit Date')['Share Profit'].sum().reset_index()
+                        date_totals['Profit Date'] = pd.to_datetime(date_totals['Profit Date'])
+                        date_totals = date_totals.sort_values('Profit Date')
+                        
+                        fig = go.Figure(go.Scatter(
+                            x=date_totals['Profit Date'],
+                            y=date_totals['Share Profit'],
+                            mode='lines+markers',
+                            line=dict(width=3, color='#667eea'),
+                            marker=dict(size=8, color='#667eea'),
+                            fill='tozeroy',
+                            fillcolor='rgba(102, 126, 234, 0.2)',
+                            hovertemplate='<b>Date:</b> %{x}<br><b>Total:</b> Rp %{y:,.0f}<extra></extra>'
+                        ))
+                        
+                        fig.update_layout(
+                            xaxis_title="Date",
+                            yaxis_title="Total Share Profit (Rp)",
+                            height=400,
+                            template="plotly_white",
+                            showlegend=False
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("📭 No share profit data available yet.")
 
 # ----------------------- Client Personal Dashboard -----------------------
 def client_dashboard(client_id):
