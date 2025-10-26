@@ -5,6 +5,8 @@ from datetime import datetime, date as date_class
 import plotly.graph_objects as go
 import hashlib
 from typing import Optional
+import smtplib
+from email.message import EmailMessage
 
 DB_PATH = "data.db"
 
@@ -14,6 +16,19 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ----------------------- Utilities -----------------------
+def safe_rerun():
+    """Call experimental_rerun if available; otherwise toggle a session flag to force rerender."""
+    try:
+        if hasattr(st, "experimental_rerun"):
+            st.experimental_rerun()
+        else:
+            # Fallback: toggle a session flag to re-execute
+            st.session_state["_rerun_toggle"] = not st.session_state.get("_rerun_toggle", False)
+    except Exception:
+        # In case rerun raised AttributeError in some environments, just set flag
+        st.session_state["_rerun_toggle"] = not st.session_state.get("_rerun_toggle", False)
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
@@ -29,6 +44,7 @@ def run_query(query, params=(), fetch=False):
     conn.commit()
     conn.close()
 
+# ----------------------- DB init & migrations -----------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -66,12 +82,53 @@ def init_db():
         username TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL
     )""")
+    # approvals history
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS approvals_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pending_id INTEGER,
+        action TEXT,
+        admin_username TEXT,
+        reason TEXT,
+        timestamp TEXT
+    )""")
     c.execute("SELECT COUNT(*) FROM admin_users WHERE username='admin'")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO admin_users (username, password) VALUES (?, ?)", ("admin", hash_password("admin123")))
     conn.commit()
     conn.close()
 
+# ----------------------- Email helper (optional) -----------------------
+def send_email_notification(to_email: str, subject: str, body: str):
+    # Only attempt if SMTP config provided in st.secrets (recommended keys: smtp_server, smtp_port, smtp_user, smtp_password, from_email)
+    try:
+        secrets = st.secrets.get("smtp", {}) if isinstance(st.secrets, dict) else {}
+    except Exception:
+        secrets = {}
+    smtp_server = secrets.get("smtp_server")
+    smtp_port = secrets.get("smtp_port")
+    smtp_user = secrets.get("smtp_user")
+    smtp_password = secrets.get("smtp_password")
+    from_email = secrets.get("from_email", smtp_user)
+    if not smtp_server or not smtp_port or not smtp_user or not smtp_password:
+        # SMTP not configured - skip sending, but log to approvals_history or app logs
+        print("SMTP not configured; skipping email send. Subject:", subject)
+        return False, "SMTP not configured"
+    try:
+        msg = EmailMessage()
+        msg["From"] = from_email
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.set_content(body)
+        with smtplib.SMTP_SSL(smtp_server, int(smtp_port)) as server:
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+        return True, "Email sent"
+    except Exception as e:
+        print("Failed to send email:", e)
+        return False, str(e)
+
+# ----------------------- Pending clients (signup) -----------------------
 def add_pending_client(name: str, username: str, password: str, invested: float, join_date: str, note: str=""):
     pw = hash_password(password)
     run_query("INSERT INTO pending_clients (name, username, password, invested, join_date, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", 
@@ -88,7 +145,11 @@ def get_pending_by_id(pid: int):
         return {"id": r[0], "name": r[1], "username": r[2], "password": r[3], "invested": r[4], "join_date": r[5], "note": r[6], "created_at": r[7]}
     return None
 
-def approve_pending_client(pid: int):
+def log_approval_action(pending_id:int, action:str, admin_username:str, reason:str=""):
+    run_query("INSERT INTO approvals_history (pending_id, action, admin_username, reason, timestamp) VALUES (?, ?, ?, ?, ?)", 
+              (pending_id, action, admin_username, reason, datetime.utcnow().isoformat()))
+
+def approve_pending_client(pid: int, admin_username:str):
     p = get_pending_by_id(pid)
     if not p:
         return False, "Pending request not found"
@@ -96,18 +157,30 @@ def approve_pending_client(pid: int):
         run_query("INSERT INTO clients (name, username, invested, join_date, note, password) VALUES (?, ?, ?, ?, ?, ?)", 
                   (p["name"], p["username"], p["invested"], p["join_date"], p["note"], p["password"]))
         run_query("DELETE FROM pending_clients WHERE id=?", (pid,))
+        log_approval_action(pid, "approved", admin_username, "")
+        # Optionally send email to user if admin configured email and if we had their email (we don't collect email in this form)
         return True, "Approved and client created"
     except Exception as e:
         return False, str(e)
 
-def reject_pending_client(pid: int):
+def reject_pending_client(pid: int, admin_username:str, reason:str=""):
+    p = get_pending_by_id(pid)
+    if not p:
+        return False, "Pending request not found"
     run_query("DELETE FROM pending_clients WHERE id=?", (pid,))
+    log_approval_action(pid, "rejected", admin_username, reason)
+    return True, "Rejected"
+
+def list_approvals_history_df():
+    rows = run_query("SELECT id, pending_id, action, admin_username, reason, timestamp FROM approvals_history ORDER BY timestamp DESC", fetch=True)
+    return pd.DataFrame(rows, columns=["id","pending_id","action","admin_username","reason","timestamp"]) if rows else pd.DataFrame(columns=["id","pending_id","action","admin_username","reason","timestamp"])
 
 def is_username_taken(username: str) -> bool:
     rows1 = run_query("SELECT 1 FROM clients WHERE username=?", (username,), fetch=True)
     rows2 = run_query("SELECT 1 FROM pending_clients WHERE username=?", (username,), fetch=True)
     return bool(rows1 or rows2)
 
+# ----------------------- Clients CRUD & auth -----------------------
 def add_client(name, invested, join_date, note="", password="client123", username: Optional[str]=None):
     hashed_pw = hash_password(password)
     run_query("INSERT INTO clients (name, username, invested, join_date, note, password) VALUES (?, ?, ?, ?, ?, ?)", 
@@ -120,6 +193,9 @@ def update_client(client_id, name, invested, join_date, note="", password=None, 
     else:
         run_query("UPDATE clients SET name=?, invested=?, join_date=?, note=?, username=? WHERE id=?", 
                  (name, invested, join_date, note, username, client_id))
+
+def change_client_password(client_id:int, new_password:str):
+    run_query("UPDATE clients SET password=? WHERE id=?", (hash_password(new_password), client_id))
 
 def delete_client(client_id):
     run_query("DELETE FROM clients WHERE id=?", (client_id,))
@@ -160,6 +236,7 @@ def verify_client_by_username(username, password):
         return rows[0][0] == hash_password(password)
     return False
 
+# ----------------------- Profits & Allocations (unchanged) -----------------------
 def add_profit(profit_date, total_profit, note=""):
     run_query("INSERT OR REPLACE INTO profits (profit_date, total_profit, note) VALUES (?, ?, ?)", 
               (profit_date, total_profit, note))
@@ -215,7 +292,6 @@ def compute_client_timeseries():
         total_profit = row["total_profit"]
         active = clients[clients["join_date"] <= d]
         total_active = active["invested"].sum()
-        
         if total_active == 0:
             for cid in client_ids:
                 timeseries[cid].append(cum_gain[cid])
@@ -229,7 +305,6 @@ def compute_client_timeseries():
                     gain = 0.0
                 cum_gain[cid] += gain
                 timeseries[cid].append(cum_gain[cid])
-    
     result = {}
     for _, c in clients.iterrows():
         cid = c["id"]
@@ -253,22 +328,16 @@ def get_client_timeseries(client_id):
 def get_dashboard_metrics():
     clients = list_clients_df()
     profits = list_profits_df()
-    
     total_clients = len(clients)
     total_invested = clients["invested"].sum() if not clients.empty else 0
     total_profit = profits["total_profit"].sum() if not profits.empty else 0
     avg_return = (total_profit / total_invested * 100) if total_invested > 0 else 0
-    
-    return {
-        "total_clients": total_clients,
-        "total_invested": total_invested,
-        "total_profit": total_profit,
-        "avg_return": avg_return
-    }
+    return {"total_clients": total_clients, "total_invested": total_invested, "total_profit": total_profit, "avg_return": avg_return}
 
 def load_css():
     st.markdown("<style> body {background-color: #0e1117; color: #fff;} </style>", unsafe_allow_html=True)
 
+# ----------------------- UI: Admin -----------------------
 def admin_panel():
     st.title("🔐 Admin Dashboard")
     st.markdown("---")
@@ -282,21 +351,28 @@ def admin_panel():
                 cols = st.columns([1,1,4])
                 with cols[0]:
                     if st.button(f"✅ Approve##{row['id']}", key=f"approve_{row['id']}"):
-                        ok, msg = approve_pending_client(int(row['id']))
+                        ok, msg = approve_pending_client(int(row['id']), st.session_state.get('username','admin'))
                         if ok:
                             st.success(f"Approved: {row['name']} ({row['username']})")
-                            st.experimental_rerun()
+                            # optionally notify via email (not collected here)
+                            safe_rerun()
                         else:
                             st.error(f"Failed to approve: {msg}")
                 with cols[1]:
                     if st.button(f"❌ Reject##{row['id']}", key=f"reject_{row['id']}"):
-                        reject_pending_client(int(row['id']))
-                        st.warning(f"Rejected: {row['name']} ({row['username']})")
-                        st.experimental_rerun()
+                        # ask for reason in a small modal-like input using text_input with unique key
+                        reason = st.text_input(f"Reason for reject {row['id']}", key=f"reject_reason_{row['id']}")
+                        if st.button(f"Confirm Reject##{row['id']}", key=f"confirm_reject_{row['id']}"):
+                            ok, msg = reject_pending_client(int(row['id']), st.session_state.get('username','admin'), reason or "")
+                            if ok:
+                                st.warning(f"Rejected: {row['name']} ({row['username']})")
+                                safe_rerun()
+                            else:
+                                st.error(f"Failed to reject: {msg}")
                 with cols[2]:
                     st.write(f"Notes: {row['note'] or '-'}  |  Requested at: {row['created_at']}")
     st.markdown("---")
-    tab1, tab2, tab3 = st.tabs(["👥 Client Management", "💹 Profit Management", "📊 Share Profit"])
+    tab1, tab2, tab3, tab4 = st.tabs(["👥 Client Management", "💹 Profit Management", "📊 Share Profit", "🔔 Approvals History"])
     with tab1:
         st.subheader("Client Management")
         col1, col2 = st.columns([1,2])
@@ -318,7 +394,7 @@ def admin_panel():
                         elif name and invested > 0 and password:
                             add_client(name, float(invested), join_date.isoformat(), note, password, username)
                             st.success(f"✅ Client '{name}' added successfully!")
-                            st.experimental_rerun()
+                            safe_rerun()
                         else:
                             st.error("Please fill required fields")
         with col2:
@@ -353,11 +429,11 @@ def admin_panel():
                                 else:
                                     update_client(edit_id, e_name, float(e_invested), e_join.isoformat(), e_note, None, e_username)
                                 st.success("✅ Client updated successfully!")
-                                st.experimental_rerun()
+                                safe_rerun()
                         if delete:
                             delete_client(edit_id)
                             st.success("✅ Client deleted successfully!")
-                            st.experimental_rerun()
+                            safe_rerun()
             else:
                 st.info("📭 No clients yet. Add your first client to get started!")
     with tab2:
@@ -373,7 +449,7 @@ def admin_panel():
                     if submit:
                         add_profit(p_date.isoformat(), float(p_total), p_note)
                         st.success(f"✅ Profit for {p_date.strftime('%d %b %Y')} saved!")
-                        st.experimental_rerun()
+                        safe_rerun()
         with col2:
             profits_df = list_profits_df()
             if not profits_df.empty:
@@ -397,18 +473,27 @@ def admin_panel():
                         if update:
                             update_profit(p_edit_id, pe_date.isoformat(), float(pe_total), pe_note)
                             st.success("✅ Profit updated successfully!")
-                            st.experimental_rerun()
+                            safe_rerun()
                         if delete:
                             delete_profit(p_edit_id)
                             st.success("✅ Profit deleted successfully!")
-                            st.experimental_rerun()
+                            safe_rerun()
             else:
                 st.info("📭 No profit entries yet. Add your first entry to get started!")
     with tab3:
         st.subheader("📊 Share Profit")
         st.info("View profit share distribution (kept minimal here)")
         st.write("Use Profit Management to add profit and Client Management to see clients.")
+    with tab4:
+        st.subheader("🔔 Approvals History")
+        hist_df = list_approvals_history_df()
+        if hist_df.empty:
+            st.info("No approval/rejection history yet.")
+        else:
+            hist_df["timestamp"] = pd.to_datetime(hist_df["timestamp"]).dt.strftime("%d %b %Y %H:%M:%S")
+            st.dataframe(hist_df, use_container_width=True, height=400)
 
+# ----------------------- UI: Client -----------------------
 def client_dashboard(client_id):
     client_data = get_client_by_id(client_id)
     if not client_data:
@@ -416,6 +501,21 @@ def client_dashboard(client_id):
         return
     st.title(f"📊 Welcome, {client_data['name']}!")
     st.markdown("---")
+    # change password option
+    with st.expander("🔐 Change Password"):
+        old_pw = st.text_input("Current Password", type="password", key="cp_old")
+        new_pw = st.text_input("New Password", type="password", key="cp_new")
+        confirm_pw = st.text_input("Confirm New Password", type="password", key="cp_confirm")
+        if st.button("Change Password"):
+            if not old_pw or not new_pw:
+                st.error("Please fill both current and new password")
+            elif new_pw != confirm_pw:
+                st.error("New passwords do not match")
+            elif verify_client_by_id(client_id, old_pw):
+                change_client_password(client_id, new_pw)
+                st.success("Password changed successfully")
+            else:
+                st.error("Current password incorrect")
     client_ts = get_client_timeseries(client_id)
     profits_df = list_profits_df()
     if not client_ts or len(client_ts['dates']) == 0:
@@ -473,6 +573,7 @@ def client_dashboard(client_id):
         else:
             st.info("No profit distribution data available for your account yet.")
 
+# ----------------------- Login & Signup -----------------------
 def admin_login_page():
     st.markdown("<div style='text-align:center;padding:2rem;'><h1>🔐 Admin Portal</h1></div>", unsafe_allow_html=True)
     with st.form("admin_login_form"):
@@ -485,7 +586,7 @@ def admin_login_page():
                 st.session_state["user_type"] = "admin"
                 st.session_state["username"] = username
                 st.success("✅ Admin login successful!")
-                st.experimental_rerun()
+                safe_rerun()
             else:
                 st.error("❌ Invalid admin credentials.")
 
@@ -513,7 +614,7 @@ def client_login_page():
                             st.session_state["client_id"] = cid
                             st.session_state["client_name"] = client["name"]
                             st.success(f"✅ Welcome, {client['name']}!")
-                            st.experimental_rerun()
+                            safe_rerun()
                             logged_in = True
                     except Exception:
                         pass
@@ -524,7 +625,7 @@ def client_login_page():
                             st.session_state["client_id"] = client["id"]
                             st.session_state["client_name"] = client["name"]
                             st.success(f"✅ Welcome, {client['name']}!")
-                            st.experimental_rerun()
+                            safe_rerun()
                         else:
                             st.error("❌ Invalid credentials or account not approved yet. If you just signed up, wait for admin approval.")
 
@@ -541,6 +642,7 @@ def client_signup_page():
         invested = st.number_input("Investment Amount (Rp) *", min_value=0.0, format="%.2f")
         join_date = st.date_input("Join Date *", value=date_class.today())
         note = st.text_area("Notes (optional)", height=100)
+        email = st.text_input("Email (optional) - used for notifications", help="Provide email if you want to receive approval notifications")
         submit = st.form_submit_button("📝 Submit Signup Request")
         if submit:
             if not name or not username or not password or invested <= 0:
@@ -552,6 +654,7 @@ def client_signup_page():
                 st.success("✅ Signup request submitted. Please wait for admin approval.")
                 st.info("Admin will see your request in the dashboard and can approve it. Once approved you can login using your username and password.")
 
+# ----------------------- Main -----------------------
 def main():
     init_db()
     load_css()
@@ -565,7 +668,7 @@ def main():
             if st.button("🚪 Logout"):
                 st.session_state["user_type"] = None
                 st.session_state.pop("username", None)
-                st.experimental_rerun()
+                safe_rerun()
         elif st.session_state["user_type"] == "client":
             st.success("Logged in as Client")
             st.markdown(f"**{st.session_state.get('client_name','Client')}** (ID: {st.session_state.get('client_id')})")
@@ -573,18 +676,18 @@ def main():
                 st.session_state["user_type"] = None
                 st.session_state.pop("client_id", None)
                 st.session_state.pop("client_name", None)
-                st.experimental_rerun()
+                safe_rerun()
         else:
             st.info("Please login or sign up")
             if st.button("🔐 Admin Login"):
                 st.session_state["login_page"] = "admin"
-                st.experimental_rerun()
+                safe_rerun()
             if st.button("👤 Client Login"):
                 st.session_state["login_page"] = "client"
-                st.experimental_rerun()
+                safe_rerun()
             if st.button("📝 Client Sign Up"):
                 st.session_state["login_page"] = "signup"
-                st.experimental_rerun()
+                safe_rerun()
     if st.session_state["user_type"] is None:
         page = st.session_state.get("login_page", "welcome")
         if page == "admin":
@@ -599,5 +702,6 @@ def main():
         admin_panel()
     elif st.session_state["user_type"] == "client":
         client_dashboard(st.session_state["client_id"])
+
 if __name__ == "__main__":
     main()
