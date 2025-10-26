@@ -4,6 +4,14 @@
 *.sqlite3
 data.db
 
+# Setup and credentials files (DO NOT COMMIT)
+SETUP_INSTRUCTIONS.md
+setup_instructions.md
+credentials.txt
+passwords.txt
+.env
+.env.local
+
 # Python
 __pycache__/
 *.py[cod]
