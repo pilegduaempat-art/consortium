@@ -22,119 +22,187 @@ st.set_page_config(
 def load_css():
     st.markdown("""
     <style>
-    /* Dark theme colors */
+    /* Cyberpunk Dark Theme */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+    
     :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
-        --success-color: #2ecc71;
-        --danger-color: #e74c3c;
-        --warning-color: #f39c12;
-        --bg-dark: #0e1117;
-        --bg-secondary: #1a1d29;
-        --bg-card: #262730;
+        --cyber-pink: #ff006e;
+        --cyber-blue: #00f5ff;
+        --cyber-purple: #8b5cf6;
+        --cyber-yellow: #ffbe0b;
+        --cyber-green: #06ffa5;
+        --bg-dark: #0a0e27;
+        --bg-secondary: #0f1421;
+        --bg-card: #141b2d;
         --text-primary: #ffffff;
-        --text-secondary: #b8b9bf;
-        --border-color: #2d3139;
+        --text-secondary: #8892b0;
+        --border-color: #1e293b;
+        --border-glow: rgba(0, 245, 255, 0.3);
     }
     
-    /* Main background */
+    /* Main background with grid effect */
     .stApp {
         background-color: var(--bg-dark);
+        background-image: 
+            linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
         color: var(--text-primary);
+        font-family: 'Rajdhani', sans-serif;
     }
     
     /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
     
-    /* Custom card styling with dark theme */
+    /* Cyberpunk metric cards with neon glow */
     .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 20px;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(0, 245, 255, 0.1) 100%);
+        padding: 24px;
         border-radius: 12px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+        border: 2px solid transparent;
+        background-clip: padding-box;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 0 20px rgba(0, 245, 255, 0.2),
+            inset 0 0 20px rgba(139, 92, 246, 0.1);
+        transition: all 0.3s ease;
         color: white;
         margin: 10px 0;
-        border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: linear-gradient(135deg, var(--cyber-blue), var(--cyber-purple), var(--cyber-pink));
+        border-radius: 12px;
+        z-index: -1;
+        opacity: 0.5;
+        filter: blur(10px);
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 
+            0 0 30px rgba(0, 245, 255, 0.4),
+            inset 0 0 30px rgba(139, 92, 246, 0.2);
     }
     
     .metric-card h3 {
         margin: 0;
-        font-size: 14px;
-        font-weight: 500;
-        opacity: 0.95;
+        font-size: 12px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 2px;
+        color: var(--cyber-blue);
+        font-family: 'Orbitron', sans-serif;
     }
     
     .metric-card p {
-        margin: 10px 0 0 0;
-        font-size: 32px;
-        font-weight: 700;
+        margin: 12px 0 0 0;
+        font-size: 36px;
+        font-weight: 900;
+        font-family: 'Orbitron', sans-serif;
+        text-shadow: 0 0 20px currentColor;
     }
     
-    /* Login card styling */
-    .login-card {
-        background: var(--bg-card);
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        margin: 2rem 0;
-        border: 1px solid var(--border-color);
+    /* Glitch effect for titles */
+    @keyframes glitch {
+        0% { text-shadow: 0 0 10px var(--cyber-blue); }
+        25% { text-shadow: -2px 0 10px var(--cyber-pink); }
+        50% { text-shadow: 2px 0 10px var(--cyber-blue); }
+        75% { text-shadow: 0 0 10px var(--cyber-purple); }
+        100% { text-shadow: 0 0 10px var(--cyber-blue); }
     }
     
-    /* Button styling */
+    /* Button styling with neon effect */
     .stButton>button {
+        background: linear-gradient(135deg, var(--cyber-purple) 0%, var(--cyber-blue) 100%);
+        border: 2px solid var(--cyber-blue);
         border-radius: 8px;
-        border: none;
-        padding: 0.6rem 1.2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 12px 24px;
+        font-weight: 700;
+        font-family: 'Orbitron', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 1px;
         color: white;
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stButton>button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .stButton>button:hover::before {
+        left: 100%;
     }
     
     .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        transform: translateY(-3px);
+        box-shadow: 0 0 40px rgba(0, 245, 255, 0.6);
+        border-color: var(--cyber-pink);
     }
     
-    /* Input field styling */
+    /* Input fields with cyber glow */
     .stTextInput>div>div>input, 
     .stNumberInput>div>div>input,
     .stTextArea textarea,
     .stSelectbox>div>div>div,
     .stDateInput>div>div>input {
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
+        background-color: rgba(20, 27, 45, 0.8);
+        border: 2px solid var(--border-color);
         border-radius: 8px;
-        padding: 0.6rem;
+        padding: 12px;
         color: var(--text-primary);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 16px;
+        transition: all 0.3s ease;
     }
     
     .stTextInput>div>div>input:focus,
     .stNumberInput>div>div>input:focus,
     .stTextArea textarea:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        border-color: var(--cyber-blue);
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+        background-color: rgba(20, 27, 45, 1);
     }
     
-    /* DataFrame styling */
+    /* DataFrame with cyber styling */
     .dataframe {
-        border-radius: 8px;
+        border-radius: 12px;
         overflow: hidden;
         background-color: var(--bg-card);
+        border: 1px solid var(--cyber-blue);
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.1);
     }
     
     div[data-testid="stDataFrame"] {
         background-color: var(--bg-card);
-        border-radius: 8px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
     }
     
-    /* Sidebar styling */
+    /* Sidebar with cyber effect */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1a1d29 0%, #0e1117 100%);
-        border-right: 1px solid var(--border-color);
+        background: linear-gradient(180deg, #0f1421 0%, #0a0e27 100%);
+        border-right: 2px solid var(--cyber-blue);
+        box-shadow: inset -10px 0 30px rgba(0, 245, 255, 0.1);
     }
     
     [data-testid="stSidebar"] .stMarkdown {
@@ -142,189 +210,249 @@ def load_css():
     }
     
     [data-testid="stSidebar"] hr {
-        border-color: var(--border-color);
+        border-color: var(--cyber-blue);
+        opacity: 0.3;
     }
     
-    /* Expander styling */
+    /* Expander with neon borders */
     .streamlit-expanderHeader {
-        background-color: var(--bg-card);
+        background-color: rgba(20, 27, 45, 0.6);
+        border: 2px solid var(--border-color);
         border-radius: 8px;
-        border: 1px solid var(--border-color);
         color: var(--text-primary);
+        font-weight: 600;
+        font-family: 'Rajdhani', sans-serif;
+        transition: all 0.3s ease;
     }
     
     .streamlit-expanderHeader:hover {
-        border-color: var(--primary-color);
+        border-color: var(--cyber-blue);
+        box-shadow: 0 0 15px rgba(0, 245, 255, 0.3);
+        background-color: rgba(20, 27, 45, 0.8);
     }
     
     .streamlit-expanderContent {
         background-color: var(--bg-secondary);
-        border: 1px solid var(--border-color);
+        border: 2px solid var(--border-color);
         border-top: none;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
     }
     
-    /* Success/Error message styling */
+    /* Alert messages with cyber styling */
     .stSuccess {
-        background-color: rgba(46, 204, 113, 0.1);
-        border: 1px solid var(--success-color);
+        background: linear-gradient(135deg, rgba(6, 255, 165, 0.1) 0%, rgba(6, 255, 165, 0.05) 100%);
+        border: 2px solid var(--cyber-green);
         border-radius: 8px;
-        padding: 1rem;
-        color: var(--success-color);
+        padding: 16px;
+        color: var(--cyber-green);
+        box-shadow: 0 0 20px rgba(6, 255, 165, 0.2);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
     }
     
     .stError {
-        background-color: rgba(231, 76, 60, 0.1);
-        border: 1px solid var(--danger-color);
+        background: linear-gradient(135deg, rgba(255, 0, 110, 0.1) 0%, rgba(255, 0, 110, 0.05) 100%);
+        border: 2px solid var(--cyber-pink);
         border-radius: 8px;
-        padding: 1rem;
-        color: var(--danger-color);
+        padding: 16px;
+        color: var(--cyber-pink);
+        box-shadow: 0 0 20px rgba(255, 0, 110, 0.2);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
     }
     
     .stWarning {
-        background-color: rgba(243, 156, 18, 0.1);
-        border: 1px solid var(--warning-color);
+        background: linear-gradient(135deg, rgba(255, 190, 11, 0.1) 0%, rgba(255, 190, 11, 0.05) 100%);
+        border: 2px solid var(--cyber-yellow);
         border-radius: 8px;
-        padding: 1rem;
-        color: var(--warning-color);
+        padding: 16px;
+        color: var(--cyber-yellow);
+        box-shadow: 0 0 20px rgba(255, 190, 11, 0.2);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
     }
     
     .stInfo {
-        background-color: rgba(102, 126, 234, 0.1);
-        border: 1px solid var(--primary-color);
+        background: linear-gradient(135deg, rgba(0, 245, 255, 0.1) 0%, rgba(0, 245, 255, 0.05) 100%);
+        border: 2px solid var(--cyber-blue);
         border-radius: 8px;
-        padding: 1rem;
-        color: var(--primary-color);
+        padding: 16px;
+        color: var(--cyber-blue);
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.2);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
     }
     
-    /* Title styling */
+    /* Title styling with glow */
     h1 {
         color: var(--text-primary);
-        font-weight: 700;
+        font-weight: 900;
+        font-family: 'Orbitron', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        text-shadow: 0 0 20px var(--cyber-blue);
     }
     
     h2 {
-        color: var(--text-primary);
-        font-weight: 600;
+        color: var(--cyber-blue);
+        font-weight: 700;
+        font-family: 'Orbitron', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 2px;
         margin-top: 2rem;
     }
     
     h3 {
         color: var(--text-secondary);
-        font-weight: 500;
+        font-weight: 600;
+        font-family: 'Rajdhani', sans-serif;
     }
     
-    /* Tab styling */
+    /* Tab styling with neon effect */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: var(--bg-secondary);
+        gap: 12px;
+        background-color: transparent;
         padding: 8px;
-        border-radius: 8px;
+        border-bottom: 2px solid var(--border-color);
     }
     
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
-        padding: 10px 20px;
+        padding: 12px 24px;
         background-color: transparent;
         color: var(--text-secondary);
-        border: 1px solid transparent;
+        border: 2px solid transparent;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
     }
     
     .stTabs [data-baseweb="tab"]:hover {
-        background-color: var(--bg-card);
-        color: var(--text-primary);
+        background-color: rgba(0, 245, 255, 0.05);
+        color: var(--cyber-blue);
+        border-color: var(--cyber-blue);
+        box-shadow: 0 0 15px rgba(0, 245, 255, 0.2);
     }
     
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: var(--bg-card);
-        color: var(--primary-color);
-        border-color: var(--primary-color);
+        background: linear-gradient(135deg, rgba(0, 245, 255, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+        color: var(--cyber-blue);
+        border-color: var(--cyber-blue);
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
     }
     
     /* Metric styling */
     [data-testid="stMetricValue"] {
         color: var(--text-primary);
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        text-shadow: 0 0 10px currentColor;
     }
     
     [data-testid="stMetricDelta"] {
-        color: var(--success-color);
+        color: var(--cyber-green);
+        font-family: 'Rajdhani', sans-serif;
     }
     
-    /* Radio button styling */
-    .stRadio > label {
-        color: var(--text-primary);
-    }
-    
-    /* Selectbox styling */
-    .stSelectbox label {
-        color: var(--text-primary);
-    }
-    
-    /* Multiselect styling */
-    .stMultiSelect label {
-        color: var(--text-primary);
-    }
-    
-    /* Download button styling */
+    /* Download button with special styling */
     .stDownloadButton>button {
-        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-        color: white;
-        border: none;
+        background: linear-gradient(135deg, var(--cyber-green) 0%, var(--cyber-blue) 100%);
+        border: 2px solid var(--cyber-green);
+        box-shadow: 0 0 20px rgba(6, 255, 165, 0.3);
     }
     
     .stDownloadButton>button:hover {
-        box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+        box-shadow: 0 0 40px rgba(6, 255, 165, 0.6);
+        border-color: var(--cyber-blue);
     }
     
     /* Form styling */
     [data-testid="stForm"] {
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1rem;
+        background: linear-gradient(135deg, rgba(20, 27, 45, 0.6) 0%, rgba(15, 20, 33, 0.6) 100%);
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 0 30px rgba(0, 245, 255, 0.1);
     }
     
-    /* Divider */
+    /* Divider with glow */
     hr {
-        border-color: var(--border-color);
+        border: none;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--cyber-blue), transparent);
         margin: 2rem 0;
+        box-shadow: 0 0 10px var(--cyber-blue);
     }
     
     /* Scrollbar styling */
     ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
+        width: 12px;
+        height: 12px;
     }
     
     ::-webkit-scrollbar-track {
         background: var(--bg-secondary);
+        border-left: 1px solid var(--border-color);
     }
     
     ::-webkit-scrollbar-thumb {
-        background: var(--border-color);
-        border-radius: 5px;
+        background: linear-gradient(180deg, var(--cyber-purple), var(--cyber-blue));
+        border-radius: 6px;
+        border: 2px solid var(--bg-secondary);
     }
     
     ::-webkit-scrollbar-thumb:hover {
-        background: var(--primary-color);
-    }
-    
-    /* Custom dark boxes */
-    .dark-box {
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
+        background: linear-gradient(180deg, var(--cyber-blue), var(--cyber-pink));
+        box-shadow: 0 0 10px var(--cyber-blue);
     }
     
     /* Label styling */
     label {
+        color: var(--cyber-blue) !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        font-size: 14px !important;
+    }
+    
+    /* Radio and checkbox */
+    .stRadio > label, .stCheckbox > label {
         color: var(--text-primary) !important;
     }
     
-    /* Plotly chart background */
-    .js-plotly-plot {
-        background-color: var(--bg-card) !important;
+    /* Selectbox */
+    .stSelectbox label, .stMultiSelect label {
+        color: var(--cyber-blue) !important;
+    }
+    
+    /* Cyber grid lines animation */
+    @keyframes gridPulse {
+        0%, 100% { opacity: 0.03; }
+        50% { opacity: 0.08; }
+    }
+    
+    .stApp {
+        animation: gridPulse 4s ease-in-out infinite;
+    }
+    
+    /* Neon text effect */
+    .neon-text {
+        color: var(--cyber-blue);
+        text-shadow: 
+            0 0 7px var(--cyber-blue),
+            0 0 10px var(--cyber-blue),
+            0 0 21px var(--cyber-blue),
+            0 0 42px var(--cyber-purple);
+    }
+    
+    /* Card scan line effect */
+    @keyframes scan {
+        0% { top: 0; }
+        100% { top: 100%; }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -923,8 +1051,11 @@ def admin_panel():
                             xaxis_title="Total Share Profit (Rp)",
                             yaxis_title="Client",
                             height=400,
-                            template="plotly_white",
-                            showlegend=False
+                            template="plotly_dark",
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            plot_bgcolor='rgba(38, 39, 48, 0.5)',
+                            showlegend=False,
+                            font=dict(color='#ffffff')
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
@@ -951,8 +1082,11 @@ def admin_panel():
                             xaxis_title="Date",
                             yaxis_title="Total Share Profit (Rp)",
                             height=400,
-                            template="plotly_white",
-                            showlegend=False
+                            template="plotly_dark",
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            plot_bgcolor='rgba(38, 39, 48, 0.5)',
+                            showlegend=False,
+                            font=dict(color='#ffffff')
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
@@ -1069,9 +1203,12 @@ def client_dashboard(client_id):
         xaxis_title="Date",
         yaxis_title="Return (%)",
         hovermode='x',
-        template="plotly_white",
+        template="plotly_dark",
         height=400,
-        showlegend=False
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(38, 39, 48, 0.5)',
+        showlegend=False,
+        font=dict(color='#ffffff')
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -1148,10 +1285,6 @@ def admin_login_page():
                     st.rerun()
                 else:
                     st.error("❌ Invalid admin credentials. Please try again.")
-        
-        #with st.expander("ℹ️ Default Admin Credentials"):
-            #st.code("Username: admin\nPassword: admin123")
-            #st.warning("⚠️ Change default credentials in production!")
 
 def client_login_page():
     st.markdown("""
