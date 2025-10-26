@@ -379,7 +379,7 @@ def init_db():
     c.execute("SELECT COUNT(*) FROM admin_users WHERE username='admin'")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO admin_users (username, password) VALUES (?, ?)", 
-                 ("admin", hash_password("admin123")))
+                 #("admin", hash_password("admin123")))
         print("✅ Created default admin user")
     
     conn.commit()
