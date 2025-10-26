@@ -22,171 +22,119 @@ st.set_page_config(
 def load_css():
     st.markdown("""
     <style>
-    /* Professional Modern Clean Theme */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap');
-    
+    /* Dark theme colors */
     :root {
-        --primary-blue: #2563eb;
-        --primary-dark: #1e40af;
-        --accent-green: #10b981;
-        --accent-orange: #f59e0b;
-        --accent-red: #ef4444;
-        --accent-purple: #8b5cf6;
-        --bg-main: #f8fafc;
-        --bg-secondary: #ffffff;
-        --bg-card: #ffffff;
-        --bg-hover: #f1f5f9;
-        --text-primary: #0f172a;
-        --text-secondary: #475569;
-        --text-muted: #94a3b8;
-        --border-color: #e2e8f0;
-        --border-focus: #3b82f6;
-        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        --primary-color: #667eea;
+        --secondary-color: #764ba2;
+        --success-color: #2ecc71;
+        --danger-color: #e74c3c;
+        --warning-color: #f39c12;
+        --bg-dark: #0e1117;
+        --bg-secondary: #1a1d29;
+        --bg-card: #262730;
+        --text-primary: #ffffff;
+        --text-secondary: #b8b9bf;
+        --border-color: #2d3139;
     }
     
     /* Main background */
     .stApp {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        background-color: var(--bg-dark);
         color: var(--text-primary);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
     /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
     
-    /* Professional metric cards */
+    /* Custom card styling with dark theme */
     .metric-card {
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-        padding: 28px;
-        border-radius: 16px;
-        border: 1px solid var(--border-color);
-        box-shadow: var(--shadow-lg);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        color: var(--text-primary);
-        margin: 12px 0;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .metric-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-        background: linear-gradient(180deg, var(--primary-blue), var(--accent-purple));
-        border-radius: 16px 0 0 16px;
-    }
-    
-    .metric-card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-xl);
-        border-color: var(--primary-blue);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+        color: white;
+        margin: 10px 0;
+        border: 1px solid rgba(255,255,255,0.1);
     }
     
     .metric-card h3 {
-        margin: 0 0 12px 0;
-        font-size: 13px;
-        font-weight: 600;
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0.95;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: var(--text-secondary);
-        font-family: 'Inter', sans-serif;
     }
     
     .metric-card p {
-        margin: 0;
+        margin: 10px 0 0 0;
         font-size: 32px;
         font-weight: 700;
-        color: var(--text-primary);
-        font-family: 'Poppins', sans-serif;
+    }
+    
+    /* Login card styling */
+    .login-card {
+        background: var(--bg-card);
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        margin: 2rem 0;
+        border: 1px solid var(--border-color);
     }
     
     /* Button styling */
     .stButton>button {
-        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);
+        border-radius: 8px;
         border: none;
-        border-radius: 10px;
-        padding: 12px 28px;
+        padding: 0.6rem 1.2rem;
         font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        font-size: 15px;
-        color: white;
-        box-shadow: var(--shadow-md);
         transition: all 0.3s ease;
-        text-transform: none;
-        letter-spacing: 0.3px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
     }
     
     .stButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: var(--shadow-xl);
-        background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-blue) 100%);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
     
-    .stButton>button:active {
-        transform: translateY(0);
-    }
-    
-    /* Input fields */
+    /* Input field styling */
     .stTextInput>div>div>input, 
     .stNumberInput>div>div>input,
     .stTextArea textarea,
     .stSelectbox>div>div>div,
     .stDateInput>div>div>input {
-        background-color: var(--bg-secondary);
-        border: 2px solid var(--border-color);
-        border-radius: 10px;
-        padding: 12px 16px;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.6rem;
         color: var(--text-primary);
-        font-family: 'Inter', sans-serif;
-        font-size: 15px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        box-shadow: var(--shadow-sm);
     }
     
     .stTextInput>div>div>input:focus,
     .stNumberInput>div>div>input:focus,
     .stTextArea textarea:focus {
-        border-color: var(--border-focus);
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        outline: none;
-        background-color: #ffffff;
-    }
-    
-    .stTextInput>div>div>input::placeholder,
-    .stNumberInput>div>div>input::placeholder,
-    .stTextArea textarea::placeholder {
-        color: var(--text-muted);
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
     }
     
     /* DataFrame styling */
     .dataframe {
-        border-radius: 12px;
+        border-radius: 8px;
         overflow: hidden;
         background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        box-shadow: var(--shadow-md);
     }
     
     div[data-testid="stDataFrame"] {
         background-color: var(--bg-card);
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
+        border-radius: 8px;
     }
     
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        background: linear-gradient(180deg, #1a1d29 0%, #0e1117 100%);
         border-right: 1px solid var(--border-color);
-        box-shadow: var(--shadow-lg);
     }
     
     [data-testid="stSidebar"] .stMarkdown {
@@ -195,187 +143,149 @@ def load_css():
     
     [data-testid="stSidebar"] hr {
         border-color: var(--border-color);
-        margin: 1.5rem 0;
     }
     
     /* Expander styling */
     .streamlit-expanderHeader {
-        background-color: var(--bg-secondary);
-        border: 2px solid var(--border-color);
-        border-radius: 10px;
+        background-color: var(--bg-card);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
         color: var(--text-primary);
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        transition: all 0.2s ease;
-        padding: 16px;
-        box-shadow: var(--shadow-sm);
     }
     
     .streamlit-expanderHeader:hover {
-        border-color: var(--primary-blue);
-        background-color: var(--bg-hover);
-        box-shadow: var(--shadow-md);
+        border-color: var(--primary-color);
     }
     
     .streamlit-expanderContent {
         background-color: var(--bg-secondary);
-        border: 2px solid var(--border-color);
+        border: 1px solid var(--border-color);
         border-top: none;
-        border-bottom-left-radius: 10px;
-        border-bottom-right-radius: 10px;
-        padding: 20px;
     }
     
-    /* Alert messages */
+    /* Success/Error message styling */
     .stSuccess {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
-        border: 2px solid var(--accent-green);
-        border-radius: 12px;
-        padding: 16px 20px;
-        color: #065f46;
-        box-shadow: var(--shadow-md);
-        font-family: 'Inter', sans-serif;
-        font-weight: 500;
+        background-color: rgba(46, 204, 113, 0.1);
+        border: 1px solid var(--success-color);
+        border-radius: 8px;
+        padding: 1rem;
+        color: var(--success-color);
     }
     
     .stError {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
-        border: 2px solid var(--accent-red);
-        border-radius: 12px;
-        padding: 16px 20px;
-        color: #991b1b;
-        box-shadow: var(--shadow-md);
-        font-family: 'Inter', sans-serif;
-        font-weight: 500;
+        background-color: rgba(231, 76, 60, 0.1);
+        border: 1px solid var(--danger-color);
+        border-radius: 8px;
+        padding: 1rem;
+        color: var(--danger-color);
     }
     
     .stWarning {
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
-        border: 2px solid var(--accent-orange);
-        border-radius: 12px;
-        padding: 16px 20px;
-        color: #92400e;
-        box-shadow: var(--shadow-md);
-        font-family: 'Inter', sans-serif;
-        font-weight: 500;
+        background-color: rgba(243, 156, 18, 0.1);
+        border: 1px solid var(--warning-color);
+        border-radius: 8px;
+        padding: 1rem;
+        color: var(--warning-color);
     }
     
     .stInfo {
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
-        border: 2px solid var(--primary-blue);
-        border-radius: 12px;
-        padding: 16px 20px;
-        color: #1e40af;
-        box-shadow: var(--shadow-md);
-        font-family: 'Inter', sans-serif;
-        font-weight: 500;
+        background-color: rgba(102, 126, 234, 0.1);
+        border: 1px solid var(--primary-color);
+        border-radius: 8px;
+        padding: 1rem;
+        color: var(--primary-color);
     }
     
     /* Title styling */
     h1 {
         color: var(--text-primary);
-        font-weight: 800;
-        font-family: 'Poppins', sans-serif;
-        letter-spacing: -0.5px;
-        margin-bottom: 0.5rem;
+        font-weight: 700;
     }
     
     h2 {
         color: var(--text-primary);
-        font-weight: 700;
-        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
         margin-top: 2rem;
-        margin-bottom: 1rem;
-        letter-spacing: -0.3px;
     }
     
     h3 {
         color: var(--text-secondary);
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        margin-bottom: 0.75rem;
+        font-weight: 500;
     }
     
     /* Tab styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: transparent;
-        border-bottom: 2px solid var(--border-color);
-        padding-bottom: 0;
+        background-color: var(--bg-secondary);
+        padding: 8px;
+        border-radius: 8px;
     }
     
     .stTabs [data-baseweb="tab"] {
-        border-radius: 8px 8px 0 0;
-        padding: 12px 24px;
+        border-radius: 8px;
+        padding: 10px 20px;
         background-color: transparent;
         color: var(--text-secondary);
-        border: none;
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
-        font-size: 15px;
-        transition: all 0.2s ease;
+        border: 1px solid transparent;
     }
     
     .stTabs [data-baseweb="tab"]:hover {
-        background-color: var(--bg-hover);
+        background-color: var(--bg-card);
         color: var(--text-primary);
     }
     
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: var(--bg-secondary);
-        color: var(--primary-blue);
-        border-bottom: 3px solid var(--primary-blue);
-        box-shadow: var(--shadow-sm);
+        background-color: var(--bg-card);
+        color: var(--primary-color);
+        border-color: var(--primary-color);
     }
     
     /* Metric styling */
     [data-testid="stMetricValue"] {
         color: var(--text-primary);
-        font-family: 'Poppins', sans-serif;
-        font-weight: 700;
-    }
-    
-    [data-testid="stMetricLabel"] {
-        color: var(--text-secondary);
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
     }
     
     [data-testid="stMetricDelta"] {
-        color: var(--accent-green);
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
+        color: var(--success-color);
     }
     
-    /* Download button */
+    /* Radio button styling */
+    .stRadio > label {
+        color: var(--text-primary);
+    }
+    
+    /* Selectbox styling */
+    .stSelectbox label {
+        color: var(--text-primary);
+    }
+    
+    /* Multiselect styling */
+    .stMultiSelect label {
+        color: var(--text-primary);
+    }
+    
+    /* Download button styling */
     .stDownloadButton>button {
-        background: linear-gradient(135deg, var(--accent-green) 0%, #059669 100%);
+        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+        color: white;
         border: none;
-        box-shadow: var(--shadow-md);
     }
     
     .stDownloadButton>button:hover {
-        box-shadow: var(--shadow-xl);
-        background: linear-gradient(135deg, #059669 0%, var(--accent-green) 100%);
+        box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
     }
     
     /* Form styling */
     [data-testid="stForm"] {
-        background: var(--bg-card);
-        border: 2px solid var(--border-color);
-        border-radius: 16px;
-        padding: 28px;
-        box-shadow: var(--shadow-lg);
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
     }
     
     /* Divider */
     hr {
-        border: none;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+        border-color: var(--border-color);
         margin: 2rem 0;
     }
     
@@ -386,206 +296,35 @@ def load_css():
     }
     
     ::-webkit-scrollbar-track {
-        background: var(--bg-hover);
-        border-radius: 5px;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: linear-gradient(180deg, var(--primary-blue), var(--primary-dark));
-        border-radius: 5px;
-        border: 2px solid var(--bg-hover);
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(180deg, var(--primary-dark), var(--primary-blue));
-    }
-    
-    /* Label styling */
-    label {
-        color: var(--text-primary) !important;
-        font-family: 'Inter', sans-serif !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-        margin-bottom: 8px !important;
-    }
-    
-    /* Radio and checkbox */
-    .stRadio > label, .stCheckbox > label {
-        color: var(--text-primary) !important;
-        font-weight: 500 !important;
-    }
-    
-    /* Selectbox & Multiselect */
-    .stSelectbox label, .stMultiSelect label {
-        color: var(--text-primary) !important;
-    }
-    
-    /* Professional card effect */
-    .professional-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: var(--shadow-lg);
-        transition: all 0.3s ease;
-    }
-    
-    .professional-card:hover {
-        box-shadow: var(--shadow-xl);
-        transform: translateY(-2px);
-    }
-    
-    /* Badge styling */
-    .badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-    }
-    
-    .badge-primary {
-        background-color: rgba(37, 99, 235, 0.1);
-        color: var(--primary-blue);
-    }
-    
-    .badge-success {
-        background-color: rgba(16, 185, 129, 0.1);
-        color: var(--accent-green);
-    }
-    
-    .badge-warning {
-        background-color: rgba(245, 158, 11, 0.1);
-        color: var(--accent-orange);
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        background-color: rgba(0, 245, 255, 0.05);
-        color: var(--cyber-blue);
-        border-color: var(--cyber-blue);
-        box-shadow: 0 0 12px rgba(0, 245, 255, 0.2);
-    }
-    
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background: linear-gradient(135deg, rgba(0, 245, 255, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-        color: var(--cyber-blue);
-        border-color: var(--cyber-blue);
-        box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
-    }
-    
-    /* Metric styling */
-    [data-testid="stMetricValue"] {
-        color: var(--text-primary);
-        font-family: 'Orbitron', sans-serif;
-        font-weight: 900;
-        text-shadow: 0 0 10px currentColor;
-    }
-    
-    [data-testid="stMetricDelta"] {
-        color: var(--cyber-green);
-        font-family: 'Rajdhani', sans-serif;
-    }
-    
-    /* Download button with special styling */
-    .stDownloadButton>button {
-        background: linear-gradient(135deg, var(--cyber-green) 0%, var(--cyber-blue) 100%);
-        border: 2px solid var(--cyber-green);
-        box-shadow: 0 0 20px rgba(6, 255, 165, 0.3);
-    }
-    
-    .stDownloadButton>button:hover {
-        box-shadow: 0 0 40px rgba(6, 255, 165, 0.6);
-        border-color: var(--cyber-blue);
-    }
-    
-    /* Form styling */
-    [data-testid="stForm"] {
-        background: linear-gradient(135deg, rgba(71, 85, 105, 0.9) 0%, rgba(51, 65, 85, 0.9) 100%);
-        border: 2px solid var(--border-color);
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 4px 20px rgba(0, 217, 255, 0.2);
-        backdrop-filter: blur(10px);
-    }
-    
-    /* Divider with glow */
-    hr {
-        border: none;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, var(--cyber-blue), transparent);
-        margin: 2rem 0;
-        box-shadow: 0 0 10px var(--cyber-blue);
-    }
-    
-    /* Scrollbar styling */
-    ::-webkit-scrollbar {
-        width: 12px;
-        height: 12px;
-    }
-    
-    ::-webkit-scrollbar-track {
         background: var(--bg-secondary);
-        border-left: 1px solid var(--border-color);
     }
     
     ::-webkit-scrollbar-thumb {
-        background: linear-gradient(180deg, var(--cyber-purple), var(--cyber-blue));
-        border-radius: 6px;
-        border: 2px solid var(--bg-secondary);
+        background: var(--border-color);
+        border-radius: 5px;
     }
     
     ::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(180deg, var(--cyber-blue), var(--cyber-pink));
-        box-shadow: 0 0 10px var(--cyber-blue);
+        background: var(--primary-color);
+    }
+    
+    /* Custom dark boxes */
+    .dark-box {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
     }
     
     /* Label styling */
     label {
-        color: var(--cyber-blue) !important;
-        font-family: 'Rajdhani', sans-serif !important;
-        font-weight: 600 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 1px !important;
-        font-size: 14px !important;
-    }
-    
-    /* Radio and checkbox */
-    .stRadio > label, .stCheckbox > label {
         color: var(--text-primary) !important;
     }
     
-    /* Selectbox */
-    .stSelectbox label, .stMultiSelect label {
-        color: var(--cyber-blue) !important;
-    }
-    
-    /* Cyber grid lines animation */
-    @keyframes gridPulse {
-        0%, 100% { opacity: 0.03; }
-        50% { opacity: 0.08; }
-    }
-    
-    .stApp {
-        animation: gridPulse 4s ease-in-out infinite;
-    }
-    
-    /* Neon text effect */
-    .neon-text {
-        color: var(--cyber-blue);
-        text-shadow: 
-            0 0 7px var(--cyber-blue),
-            0 0 10px var(--cyber-blue),
-            0 0 21px var(--cyber-blue),
-            0 0 42px var(--cyber-purple);
-    }
-    
-    /* Card scan line effect */
-    @keyframes scan {
-        0% { top: 0; }
-        100% { top: 100%; }
+    /* Plotly chart background */
+    .js-plotly-plot {
+        background-color: var(--bg-card) !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1185,10 +924,7 @@ def admin_panel():
                             yaxis_title="Client",
                             height=400,
                             template="plotly_white",
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='#ffffff',
-                            showlegend=False,
-                            font=dict(color='#0f172a', family='Inter, sans-serif')
+                            showlegend=False
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
@@ -1216,10 +952,7 @@ def admin_panel():
                             yaxis_title="Total Share Profit (Rp)",
                             height=400,
                             template="plotly_white",
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='#ffffff',
-                            showlegend=False,
-                            font=dict(color='#0f172a', family='Inter, sans-serif')
+                            showlegend=False
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
@@ -1338,10 +1071,7 @@ def client_dashboard(client_id):
         hovermode='x',
         template="plotly_white",
         height=400,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='#ffffff',
-        showlegend=False,
-        font=dict(color='#0f172a', family='Inter, sans-serif')
+        showlegend=False
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -1394,16 +1124,10 @@ def client_dashboard(client_id):
 # ----------------------- Login Pages -----------------------
 def admin_login_page():
     st.markdown("""
-    <div style='text-align: center; padding: 3rem 0 2rem 0;'>
-        <div style='background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); 
-                    width: 80px; height: 80px; border-radius: 20px; 
-                    display: inline-flex; align-items: center; justify-content: center;
-                    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
-                    margin-bottom: 1.5rem;'>
-            <span style='font-size: 40px;'>🔐</span>
-        </div>
-        <h1 style='color: #0f172a; font-size: 2rem; margin: 0; font-weight: 700;'>Admin Portal</h1>
-        <p style='color: #64748b; font-size: 1rem; margin-top: 0.5rem;'>Secure access to management dashboard</p>
+    <div style='text-align: center; padding: 2rem;'>
+        <h1 style='color: #ffffff; font-size: 3rem;'>🔐</h1>
+        <h1 style='color: #ffffff;'>Admin Portal</h1>
+        <p style='color: #b8b9bf; font-size: 1.2rem;'>Secure Administrative Access</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1412,34 +1136,29 @@ def admin_login_page():
     with col2:
         with st.form("admin_login_form"):
             st.markdown("### 🔑 Administrator Login")
-            username = st.text_input("Username", placeholder="Enter your username")
-            password = st.text_input("Password", type="password", placeholder="Enter your password")
-            
-            col_a, col_b = st.columns([1, 1])
-            with col_b:
-                submit = st.form_submit_button("Sign In", use_container_width=True)
+            username = st.text_input("Username", placeholder="Enter admin username")
+            password = st.text_input("Password", type="password", placeholder="Enter admin password")
+            submit = st.form_submit_button("🚀 Login as Admin", use_container_width=True)
             
             if submit:
                 if verify_admin(username, password):
                     st.session_state["user_type"] = "admin"
                     st.session_state["username"] = username
-                    st.success("✅ Login successful! Redirecting to dashboard...")
+                    st.success("✅ Admin login successful! Redirecting...")
                     st.rerun()
                 else:
-                    st.error("❌ Invalid credentials. Please check your username and password.")
+                    st.error("❌ Invalid admin credentials. Please try again.")
+        
+        #with st.expander("ℹ️ Default Admin Credentials"):
+            #st.code("Username: admin\nPassword: admin123")
+            #st.warning("⚠️ Change default credentials in production!")
 
 def client_login_page():
     st.markdown("""
-    <div style='text-align: center; padding: 3rem 0 2rem 0;'>
-        <div style='background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-                    width: 80px; height: 80px; border-radius: 20px; 
-                    display: inline-flex; align-items: center; justify-content: center;
-                    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
-                    margin-bottom: 1.5rem;'>
-            <span style='font-size: 40px;'>👤</span>
-        </div>
-        <h1 style='color: #0f172a; font-size: 2rem; margin: 0; font-weight: 700;'>Client Portal</h1>
-        <p style='color: #64748b; font-size: 1rem; margin-top: 0.5rem;'>Access your investment dashboard</p>
+    <div style='text-align: center; padding: 2rem;'>
+        <h1 style='color: #ffffff; font-size: 3rem;'>👤</h1>
+        <h1 style='color: #ffffff;'>Client Portal</h1>
+        <p style='color: #b8b9bf; font-size: 1.2rem;'>Access Your Investment Dashboard</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1451,8 +1170,8 @@ def client_login_page():
             
             client_id_input = st.text_input(
                 "Client ID",
-                placeholder="Enter your Client ID",
-                help="Your unique client identifier provided by administrator"
+                placeholder="Enter your Client ID (e.g., 1, 2, 3)",
+                help="Your Client ID was provided by the administrator"
             )
             
             password = st.text_input(
@@ -1461,9 +1180,7 @@ def client_login_page():
                 placeholder="Enter your password"
             )
             
-            col_a, col_b = st.columns([1, 1])
-            with col_b:
-                submit = st.form_submit_button("Sign In", use_container_width=True)
+            submit = st.form_submit_button("🚀 Login", use_container_width=True)
             
             if submit:
                 if not client_id_input:
@@ -1474,14 +1191,15 @@ def client_login_page():
                     try:
                         client_id = int(client_id_input)
                         
+                        # Check if client exists
                         client_data = get_client_by_id(client_id)
                         if not client_data:
-                            st.error("❌ Client ID not found. Please check your ID.")
+                            st.error("❌ Client ID not found. Please check your ID and try again.")
                         elif verify_client(client_id, password):
                             st.session_state["user_type"] = "client"
                             st.session_state["client_id"] = client_id
                             st.session_state["client_name"] = client_data["name"]
-                            st.success(f"✅ Welcome, {client_data['name']}! Loading your dashboard...")
+                            st.success(f"✅ Welcome, {client_data['name']}! Redirecting...")
                             st.rerun()
                         else:
                             st.error("❌ Invalid password. Please try again.")
@@ -1491,7 +1209,7 @@ def client_login_page():
         with st.expander("ℹ️ Need Help?"):
             st.info("**First time logging in?** Your default password is: `client123`")
             st.info("**Your Client ID** was provided by the administrator when your account was created.")
-            st.warning("**Contact administrator to:**")
+            st.warning("⚠️ Please contact administrator to:")
             st.markdown("""
             - Get your Client ID if you don't have it
             - Reset your password if forgotten
@@ -1500,11 +1218,11 @@ def client_login_page():
             
         st.markdown("<br>", unsafe_allow_html=True)
         
+        # Security notice
         st.markdown("""
-        <div style='background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%); 
-                    padding: 1rem; border-radius: 12px; border: 2px solid #f59e0b;'>
-            <strong style='color: #92400e;'>🔒 Security Notice:</strong><br>
-            <span style='color: #92400e;'>Never share your Client ID or password with anyone. The administrator will never ask for your password.</span>
+        <div style='background: rgba(243, 156, 18, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12; color: #f39c12;'>
+            <strong>🔒 Security Notice:</strong><br>
+            Never share your Client ID or password with anyone. The administrator will never ask for your password.
         </div>
         """, unsafe_allow_html=True)
 
@@ -1582,10 +1300,10 @@ def main():
         
         # Footer
         st.markdown("""
-        <div style='text-align: center; padding: 1rem 0; color: #64748b; font-size: 0.85rem;'>
-            <hr style='border: 1px solid #e2e8f0; margin: 1.5rem 0;'>
-            <p style='margin: 0.5rem 0;'>© 2025 Investment Consortium</p>
-            <p style='margin: 0; font-weight: 500;'>Secure • Professional • Reliable</p>
+        <div style='text-align: center; color: rgba(255,255,255,0.6); font-size: 0.8rem; padding: 1rem 0;'>
+            <hr style='border: 1px solid rgba(255,255,255,0.1); margin: 1rem 0;'>
+            <p>© 2025 Investment Consortium</p>
+            <p>Secure • Professional • Reliable</p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -1602,18 +1320,12 @@ def main():
             # Welcome page
             st.markdown("""
             <div style='text-align: center; padding: 3rem 0;'>
-                <div style='background: linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%); 
-                            width: 100px; height: 100px; border-radius: 24px; 
-                            display: inline-flex; align-items: center; justify-content: center;
-                            box-shadow: 0 20px 40px rgba(37, 99, 235, 0.3);
-                            margin-bottom: 2rem;'>
-                    <span style='font-size: 50px;'>💰</span>
-                </div>
-                <h1 style='color: #0f172a; font-size: 2.5rem; font-weight: 800; margin: 0;'>Investment Consortium</h1>
-                <p style='color: #64748b; font-size: 1.1rem; margin-top: 1rem;'>
+                <h1 style='color: #ffffff; font-size: 3.5rem;'>💰</h1>
+                <h1 style='color: #ffffff; font-size: 2.5rem;'>Investment Consortium Dashboard</h1>
+                <p style='color: #b8b9bf; font-size: 1.3rem; margin-top: 1rem;'>
                     Professional Investment Management Platform
                 </p>
-                <hr style='width: 50%; margin: 2rem auto; border: 1px solid #e2e8f0;'>
+                <hr style='width: 50%; margin: 2rem auto; border: 1px solid #2d3139;'>
             </div>
             """, unsafe_allow_html=True)
             
