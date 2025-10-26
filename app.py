@@ -27,26 +27,26 @@ def load_css():
     
     :root {
         --cyber-pink: #ff006e;
-        --cyber-blue: #00f5ff;
-        --cyber-purple: #8b5cf6;
-        --cyber-yellow: #ffbe0b;
-        --cyber-green: #06ffa5;
-        --bg-dark: #1a1f35;
-        --bg-secondary: #232946;
-        --bg-card: #2d3250;
-        --text-primary: #eef0f2;
-        --text-secondary: #b8c1ec;
-        --border-color: #3d4466;
-        --border-glow: rgba(0, 245, 255, 0.3);
+        --cyber-blue: #00d9ff;
+        --cyber-purple: #a78bfa;
+        --cyber-yellow: #fbbf24;
+        --cyber-green: #10b981;
+        --bg-dark: #1e293b;
+        --bg-secondary: #334155;
+        --bg-card: #475569;
+        --text-primary: #f1f5f9;
+        --text-secondary: #cbd5e1;
+        --border-color: #64748b;
+        --border-glow: rgba(0, 217, 255, 0.4);
     }
     
     /* Main background with grid effect */
     .stApp {
-        background-color: var(--bg-dark);
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
         background-image: 
-            linear-gradient(rgba(0, 245, 255, 0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 245, 255, 0.05) 1px, transparent 1px);
-        background-size: 50px 50px;
+            linear-gradient(rgba(0, 217, 255, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 217, 255, 0.08) 1px, transparent 1px);
+        background-size: 40px 40px;
         color: var(--text-primary);
         font-family: 'Rajdhani', sans-serif;
     }
@@ -58,16 +58,15 @@ def load_css():
     
     /* Cyberpunk metric cards with neon glow */
     .metric-card {
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(0, 245, 255, 0.2) 100%);
+        background: linear-gradient(135deg, rgba(167, 139, 250, 0.25) 0%, rgba(0, 217, 255, 0.25) 100%);
         padding: 24px;
         border-radius: 12px;
-        border: 2px solid transparent;
-        background-clip: padding-box;
+        border: 2px solid rgba(0, 217, 255, 0.4);
         position: relative;
         overflow: hidden;
         box-shadow: 
-            0 0 30px rgba(0, 245, 255, 0.3),
-            inset 0 0 30px rgba(139, 92, 246, 0.15);
+            0 4px 20px rgba(0, 217, 255, 0.3),
+            inset 0 1px 1px rgba(255, 255, 255, 0.1);
         transition: all 0.3s ease;
         color: white;
         margin: 10px 0;
@@ -77,22 +76,21 @@ def load_css():
     .metric-card::before {
         content: '';
         position: absolute;
-        top: -2px;
-        left: -2px;
-        right: -2px;
-        bottom: -2px;
-        background: linear-gradient(135deg, var(--cyber-blue), var(--cyber-purple), var(--cyber-pink));
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(167, 139, 250, 0.1) 0%, rgba(0, 217, 255, 0.1) 100%);
         border-radius: 12px;
         z-index: -1;
-        opacity: 0.5;
-        filter: blur(10px);
     }
     
     .metric-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-3px);
         box-shadow: 
-            0 0 30px rgba(0, 245, 255, 0.4),
-            inset 0 0 30px rgba(139, 92, 246, 0.2);
+            0 8px 30px rgba(0, 217, 255, 0.5),
+            inset 0 1px 1px rgba(255, 255, 255, 0.2);
+        border-color: rgba(0, 217, 255, 0.8);
     }
     
     .metric-card h3 {
@@ -166,13 +164,14 @@ def load_css():
     .stTextArea textarea,
     .stSelectbox>div>div>div,
     .stDateInput>div>div>input {
-        background-color: rgba(45, 50, 80, 0.9);
+        background-color: rgba(71, 85, 105, 0.95);
         border: 2px solid var(--border-color);
         border-radius: 8px;
         padding: 12px;
         color: var(--text-primary);
         font-family: 'Rajdhani', sans-serif;
         font-size: 16px;
+        font-weight: 500;
         transition: all 0.3s ease;
     }
     
@@ -180,8 +179,9 @@ def load_css():
     .stNumberInput>div>div>input:focus,
     .stTextArea textarea:focus {
         border-color: var(--cyber-blue);
-        box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
-        background-color: rgba(45, 50, 80, 1);
+        box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
+        background-color: rgba(71, 85, 105, 1);
+        outline: none;
     }
     
     /* DataFrame with cyber styling */
@@ -201,9 +201,9 @@ def load_css():
     
     /* Sidebar with cyber effect */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #232946 0%, #1a1f35 100%);
+        background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
         border-right: 2px solid var(--cyber-blue);
-        box-shadow: inset -10px 0 30px rgba(0, 245, 255, 0.15);
+        box-shadow: inset -5px 0 20px rgba(0, 217, 255, 0.2);
     }
     
     [data-testid="stSidebar"] .stMarkdown {
@@ -217,7 +217,7 @@ def load_css():
     
     /* Expander with neon borders */
     .streamlit-expanderHeader {
-        background-color: rgba(45, 50, 80, 0.8);
+        background-color: rgba(71, 85, 105, 0.9);
         border: 2px solid var(--border-color);
         border-radius: 8px;
         color: var(--text-primary);
@@ -228,12 +228,12 @@ def load_css():
     
     .streamlit-expanderHeader:hover {
         border-color: var(--cyber-blue);
-        box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
-        background-color: rgba(45, 50, 80, 1);
+        box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
+        background-color: rgba(71, 85, 105, 1);
     }
     
     .streamlit-expanderContent {
-        background-color: var(--bg-secondary);
+        background-color: rgba(51, 65, 85, 0.9);
         border: 2px solid var(--border-color);
         border-top: none;
         border-bottom-left-radius: 8px;
@@ -373,11 +373,11 @@ def load_css():
     
     /* Form styling */
     [data-testid="stForm"] {
-        background: linear-gradient(135deg, rgba(45, 50, 80, 0.8) 0%, rgba(35, 41, 70, 0.8) 100%);
+        background: linear-gradient(135deg, rgba(71, 85, 105, 0.9) 0%, rgba(51, 65, 85, 0.9) 100%);
         border: 2px solid var(--border-color);
         border-radius: 12px;
         padding: 24px;
-        box-shadow: 0 0 30px rgba(0, 245, 255, 0.15);
+        box-shadow: 0 4px 20px rgba(0, 217, 255, 0.2);
         backdrop-filter: blur(10px);
     }
     
