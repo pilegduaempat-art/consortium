@@ -379,7 +379,7 @@ def init_db():
     c.execute("SELECT COUNT(*) FROM admin_users WHERE username='admin'")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO admin_users (username, password) VALUES (?, ?)", 
-                 ("username", hash_password("password")))
+                 ("admin", hash_password("admin123")))
         print("✅ Created default admin user")
     
     conn.commit()
@@ -1149,9 +1149,9 @@ def admin_login_page():
                 else:
                     st.error("❌ Invalid admin credentials. Please try again.")
         
-        with st.expander("ℹ️ Default Admin Credentials"):
-            st.code("Username: admin\nPassword: admin123")
-            st.warning("⚠️ Change default credentials in production!")
+        #with st.expander("ℹ️ Default Admin Credentials"):
+            #st.code("Username: admin\nPassword: admin123")
+            #st.warning("⚠️ Change default credentials in production!")
 
 def client_login_page():
     st.markdown("""
