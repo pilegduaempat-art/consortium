@@ -152,15 +152,28 @@ def hash_password(password):
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    
+    # Create clients table
     c.execute("""
     CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         invested REAL NOT NULL,
         join_date TEXT NOT NULL,
-        note TEXT,
-        password TEXT NOT NULL
+        note TEXT
     )""")
+    
+    # Check if password column exists, if not add it
+    c.execute("PRAGMA table_info(clients)")
+    columns = [column[1] for column in c.fetchall()]
+    if 'password' not in columns:
+        c.execute("ALTER TABLE clients ADD COLUMN password TEXT")
+        # Set default password for existing clients
+        default_password = hash_password("client123")
+        c.execute("UPDATE clients SET password = ? WHERE password IS NULL", (default_password,))
+        print("✅ Added password column to clients table and set default passwords")
+    
+    # Create profits table
     c.execute("""
     CREATE TABLE IF NOT EXISTS profits (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -168,6 +181,8 @@ def init_db():
         total_profit REAL NOT NULL,
         note TEXT
     )""")
+    
+    # Create admin_users table
     c.execute("""
     CREATE TABLE IF NOT EXISTS admin_users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,9 +195,11 @@ def init_db():
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO admin_users (username, password) VALUES (?, ?)", 
                  ("admin", hash_password("admin123")))
+        print("✅ Created default admin user")
     
     conn.commit()
     conn.close()
+    print("✅ Database initialized successfully")
 
 def run_query(query, params=(), fetch=False):
     conn = sqlite3.connect(DB_PATH)
@@ -393,6 +410,12 @@ def admin_panel():
     
     with tab1:
         st.subheader("Client Management")
+        
+        # Check if there are clients with default password
+        clients_df = list_clients_df()
+        if not clients_df.empty:
+            # Check for clients that might have default password
+            st.info("ℹ️ **Note:** Existing clients from old database have default password: `client123`. Please update their passwords for security.")
         
         col1, col2 = st.columns([1, 2])
         
@@ -779,8 +802,10 @@ def client_login_page():
                     st.error("❌ Invalid password. Please try again.")
         
         with st.expander("ℹ️ Need Help?"):
+            st.info("**First time logging in?** Your default password is: `client123`")
             st.info("If you forgot your password, please contact the administrator.")
             st.info("Your Client ID can be found in communications from the administrator.")
+            st.warning("⚠️ Please change your default password after first login by contacting admin.")
 
 # ----------------------- Main Application -----------------------
 def main():
