@@ -22,125 +22,309 @@ st.set_page_config(
 def load_css():
     st.markdown("""
     <style>
-    /* Main theme colors */
+    /* Dark theme colors */
     :root {
-        --primary-color: #1f77b4;
-        --secondary-color: #ff7f0e;
+        --primary-color: #667eea;
+        --secondary-color: #764ba2;
         --success-color: #2ecc71;
         --danger-color: #e74c3c;
-        --background-color: #f8f9fa;
+        --warning-color: #f39c12;
+        --bg-dark: #0e1117;
+        --bg-secondary: #1a1d29;
+        --bg-card: #262730;
+        --text-primary: #ffffff;
+        --text-secondary: #b8b9bf;
+        --border-color: #2d3139;
+    }
+    
+    /* Main background */
+    .stApp {
+        background-color: var(--bg-dark);
+        color: var(--text-primary);
     }
     
     /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
-    /* Custom card styling */
+    /* Custom card styling with dark theme */
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.4);
         color: white;
         margin: 10px 0;
+        border: 1px solid rgba(255,255,255,0.1);
     }
     
     .metric-card h3 {
         margin: 0;
         font-size: 14px;
         font-weight: 500;
-        opacity: 0.9;
+        opacity: 0.95;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     .metric-card p {
         margin: 10px 0 0 0;
-        font-size: 28px;
+        font-size: 32px;
         font-weight: 700;
     }
     
     /* Login card styling */
     .login-card {
-        background: white;
+        background: var(--bg-card);
         padding: 2rem;
         border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         margin: 2rem 0;
+        border: 1px solid var(--border-color);
     }
     
     /* Button styling */
     .stButton>button {
         border-radius: 8px;
         border: none;
-        padding: 0.5rem 1rem;
-        font-weight: 500;
+        padding: 0.6rem 1.2rem;
+        font-weight: 600;
         transition: all 0.3s ease;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
     }
     
     .stButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
     
     /* Input field styling */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+    .stTextInput>div>div>input, 
+    .stNumberInput>div>div>input,
+    .stTextArea textarea,
+    .stSelectbox>div>div>div,
+    .stDateInput>div>div>input {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
-        border: 1px solid #e0e0e0;
-        padding: 0.5rem;
+        padding: 0.6rem;
+        color: var(--text-primary);
+    }
+    
+    .stTextInput>div>div>input:focus,
+    .stNumberInput>div>div>input:focus,
+    .stTextArea textarea:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
     }
     
     /* DataFrame styling */
     .dataframe {
         border-radius: 8px;
         overflow: hidden;
+        background-color: var(--bg-card);
+    }
+    
+    div[data-testid="stDataFrame"] {
+        background-color: var(--bg-card);
+        border-radius: 8px;
     }
     
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e3c72 0%, #2a5298 100%);
+        background: linear-gradient(180deg, #1a1d29 0%, #0e1117 100%);
+        border-right: 1px solid var(--border-color);
     }
     
     [data-testid="stSidebar"] .stMarkdown {
-        color: white;
+        color: var(--text-primary);
+    }
+    
+    [data-testid="stSidebar"] hr {
+        border-color: var(--border-color);
     }
     
     /* Expander styling */
     .streamlit-expanderHeader {
-        background-color: #f8f9fa;
+        background-color: var(--bg-card);
         border-radius: 8px;
-        border: 1px solid #e0e0e0;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+    
+    .streamlit-expanderHeader:hover {
+        border-color: var(--primary-color);
+    }
+    
+    .streamlit-expanderContent {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-top: none;
     }
     
     /* Success/Error message styling */
-    .stSuccess, .stError, .stWarning, .stInfo {
+    .stSuccess {
+        background-color: rgba(46, 204, 113, 0.1);
+        border: 1px solid var(--success-color);
         border-radius: 8px;
         padding: 1rem;
+        color: var(--success-color);
+    }
+    
+    .stError {
+        background-color: rgba(231, 76, 60, 0.1);
+        border: 1px solid var(--danger-color);
+        border-radius: 8px;
+        padding: 1rem;
+        color: var(--danger-color);
+    }
+    
+    .stWarning {
+        background-color: rgba(243, 156, 18, 0.1);
+        border: 1px solid var(--warning-color);
+        border-radius: 8px;
+        padding: 1rem;
+        color: var(--warning-color);
+    }
+    
+    .stInfo {
+        background-color: rgba(102, 126, 234, 0.1);
+        border: 1px solid var(--primary-color);
+        border-radius: 8px;
+        padding: 1rem;
+        color: var(--primary-color);
     }
     
     /* Title styling */
     h1 {
-        color: #2c3e50;
+        color: var(--text-primary);
         font-weight: 700;
     }
     
     h2 {
-        color: #34495e;
+        color: var(--text-primary);
         font-weight: 600;
         margin-top: 2rem;
     }
     
     h3 {
-        color: #546e7a;
+        color: var(--text-secondary);
         font-weight: 500;
     }
     
     /* Tab styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
+        background-color: var(--bg-secondary);
+        padding: 8px;
+        border-radius: 8px;
     }
     
     .stTabs [data-baseweb="tab"] {
-        border-radius: 8px 8px 0 0;
+        border-radius: 8px;
         padding: 10px 20px;
+        background-color: transparent;
+        color: var(--text-secondary);
+        border: 1px solid transparent;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: var(--bg-card);
+        color: var(--text-primary);
+    }
+    
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: var(--bg-card);
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    
+    /* Metric styling */
+    [data-testid="stMetricValue"] {
+        color: var(--text-primary);
+    }
+    
+    [data-testid="stMetricDelta"] {
+        color: var(--success-color);
+    }
+    
+    /* Radio button styling */
+    .stRadio > label {
+        color: var(--text-primary);
+    }
+    
+    /* Selectbox styling */
+    .stSelectbox label {
+        color: var(--text-primary);
+    }
+    
+    /* Multiselect styling */
+    .stMultiSelect label {
+        color: var(--text-primary);
+    }
+    
+    /* Download button styling */
+    .stDownloadButton>button {
+        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+        color: white;
+        border: none;
+    }
+    
+    .stDownloadButton>button:hover {
+        box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+    }
+    
+    /* Form styling */
+    [data-testid="stForm"] {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    /* Divider */
+    hr {
+        border-color: var(--border-color);
+        margin: 2rem 0;
+    }
+    
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-color);
+    }
+    
+    /* Custom dark boxes */
+    .dark-box {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    /* Label styling */
+    label {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Plotly chart background */
+    .js-plotly-plot {
+        background-color: var(--bg-card) !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -941,9 +1125,9 @@ def client_dashboard(client_id):
 def admin_login_page():
     st.markdown("""
     <div style='text-align: center; padding: 2rem;'>
-        <h1 style='color: #2c3e50; font-size: 3rem;'>🔐</h1>
-        <h1 style='color: #2c3e50;'>Admin Portal</h1>
-        <p style='color: #7f8c8d; font-size: 1.2rem;'>Secure Administrative Access</p>
+        <h1 style='color: #ffffff; font-size: 3rem;'>🔐</h1>
+        <h1 style='color: #ffffff;'>Admin Portal</h1>
+        <p style='color: #b8b9bf; font-size: 1.2rem;'>Secure Administrative Access</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -972,9 +1156,9 @@ def admin_login_page():
 def client_login_page():
     st.markdown("""
     <div style='text-align: center; padding: 2rem;'>
-        <h1 style='color: #2c3e50; font-size: 3rem;'>👤</h1>
-        <h1 style='color: #2c3e50;'>Client Portal</h1>
-        <p style='color: #7f8c8d; font-size: 1.2rem;'>Access Your Investment Dashboard</p>
+        <h1 style='color: #ffffff; font-size: 3rem;'>👤</h1>
+        <h1 style='color: #ffffff;'>Client Portal</h1>
+        <p style='color: #b8b9bf; font-size: 1.2rem;'>Access Your Investment Dashboard</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1036,7 +1220,7 @@ def client_login_page():
         
         # Security notice
         st.markdown("""
-        <div style='background: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;'>
+        <div style='background: rgba(243, 156, 18, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12; color: #f39c12;'>
             <strong>🔒 Security Notice:</strong><br>
             Never share your Client ID or password with anyone. The administrator will never ask for your password.
         </div>
@@ -1136,12 +1320,12 @@ def main():
             # Welcome page
             st.markdown("""
             <div style='text-align: center; padding: 3rem 0;'>
-                <h1 style='color: #2c3e50; font-size: 3.5rem;'>💰</h1>
-                <h1 style='color: #2c3e50; font-size: 2.5rem;'>Investment Consortium Dashboard</h1>
-                <p style='color: #7f8c8d; font-size: 1.3rem; margin-top: 1rem;'>
+                <h1 style='color: #ffffff; font-size: 3.5rem;'>💰</h1>
+                <h1 style='color: #ffffff; font-size: 2.5rem;'>Investment Consortium Dashboard</h1>
+                <p style='color: #b8b9bf; font-size: 1.3rem; margin-top: 1rem;'>
                     Professional Investment Management Platform
                 </p>
-                <hr style='width: 50%; margin: 2rem auto; border: 1px solid #e0e0e0;'>
+                <hr style='width: 50%; margin: 2rem auto; border: 1px solid #2d3139;'>
             </div>
             """, unsafe_allow_html=True)
             
