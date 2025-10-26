@@ -466,7 +466,7 @@ def load_css():
         background-color: rgba(0, 245, 255, 0.05);
         color: var(--cyber-blue);
         border-color: var(--cyber-blue);
-        box-shadow: 0 0 15px rgba(0, 245, 255, 0.2);
+        box-shadow: 0 0 12px rgba(0, 245, 255, 0.2);
     }
     
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
