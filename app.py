@@ -1,74 +1,89 @@
+# consortium app v3 - full features
 import streamlit as st
 import sqlite3
 import pandas as pd
-from datetime import datetime, date as date_class
+from datetime import datetime, timedelta, date as date_class
 import plotly.graph_objects as go
 import hashlib
-from typing import Optional
+import secrets as pysecrets
 import smtplib
 from email.message import EmailMessage
+from typing import Optional
 
 DB_PATH = "data.db"
+RESET_TOKEN_EXPIRY_MIN = 30  # minutes
 
-st.set_page_config(
-    page_title="Investment Consortium Dashboard",
-    page_icon="💰",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Investment Consortium", page_icon="💰", layout="wide")
 
 # ----------------------- Utilities -----------------------
 def safe_rerun():
-    """Call experimental_rerun if available; otherwise toggle a session flag to force rerender."""
     try:
         if hasattr(st, "experimental_rerun"):
             st.experimental_rerun()
         else:
-            # Fallback: toggle a session flag to re-execute
             st.session_state["_rerun_toggle"] = not st.session_state.get("_rerun_toggle", False)
     except Exception:
-        # In case rerun raised AttributeError in some environments, just set flag
         st.session_state["_rerun_toggle"] = not st.session_state.get("_rerun_toggle", False)
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
-def run_query(query, params=(), fetch=False):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(query, params)
-    if fetch:
-        rows = c.fetchall()
+def run_query(query, params=(), fetch=False, retry=True):
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=10)
+        c = conn.cursor()
+        c.execute(query, params)
+        if fetch:
+            rows = c.fetchall()
+            conn.close()
+            return rows
+        conn.commit()
         conn.close()
-        return rows
-    conn.commit()
-    conn.close()
+    except sqlite3.OperationalError as e:
+        msg = str(e).lower()
+        # auto-init if missing tables or DB corrupted/missing schema
+        if "no such table" in msg or "unable to open database file" in msg or "file is not a database" in msg:
+            try:
+                init_db()
+            except Exception as ex:
+                raise
+            if retry:
+                return run_query(query, params=params, fetch=fetch, retry=False)
+            else:
+                raise
+        else:
+            raise
 
 # ----------------------- DB init & migrations -----------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    # clients - includes email and password
     c.execute("""
     CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         username TEXT UNIQUE,
+        email TEXT,
         invested REAL NOT NULL,
         join_date TEXT NOT NULL,
         note TEXT,
         password TEXT
     )""")
+    # pending_clients - includes email
     c.execute("""
     CREATE TABLE IF NOT EXISTS pending_clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         username TEXT NOT NULL UNIQUE,
+        email TEXT,
         password TEXT NOT NULL,
         invested REAL NOT NULL,
         join_date TEXT NOT NULL,
         note TEXT,
         created_at TEXT NOT NULL
     )""")
+    # profits
     c.execute("""
     CREATE TABLE IF NOT EXISTS profits (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,6 +91,7 @@ def init_db():
         total_profit REAL NOT NULL,
         note TEXT
     )""")
+    # admin users
     c.execute("""
     CREATE TABLE IF NOT EXISTS admin_users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,6 +108,16 @@ def init_db():
         reason TEXT,
         timestamp TEXT
     )""")
+    # password resets table
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS password_resets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER,
+        token TEXT,
+        expires_at TEXT,
+        used INTEGER DEFAULT 0
+    )""")
+    # ensure default admin exists
     c.execute("SELECT COUNT(*) FROM admin_users WHERE username='admin'")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO admin_users (username, password) VALUES (?, ?)", ("admin", hash_password("admin123")))
@@ -99,50 +125,47 @@ def init_db():
     conn.close()
 
 # ----------------------- Email helper (optional) -----------------------
-def send_email_notification(to_email: str, subject: str, body: str):
-    # Only attempt if SMTP config provided in st.secrets (recommended keys: smtp_server, smtp_port, smtp_user, smtp_password, from_email)
+def get_smtp_config():
     try:
-        secrets = st.secrets.get("smtp", {}) if isinstance(st.secrets, dict) else {}
+        cfg = st.secrets.get("smtp", {}) if isinstance(st.secrets, dict) else {}
     except Exception:
-        secrets = {}
-    smtp_server = secrets.get("smtp_server")
-    smtp_port = secrets.get("smtp_port")
-    smtp_user = secrets.get("smtp_user")
-    smtp_password = secrets.get("smtp_password")
-    from_email = secrets.get("from_email", smtp_user)
-    if not smtp_server or not smtp_port or not smtp_user or not smtp_password:
-        # SMTP not configured - skip sending, but log to approvals_history or app logs
-        print("SMTP not configured; skipping email send. Subject:", subject)
+        cfg = {}
+    return cfg
+
+def send_email(to_email: str, subject: str, body: str):
+    cfg = get_smtp_config()
+    if not cfg.get("smtp_server") or not cfg.get("smtp_port") or not cfg.get("smtp_user") or not cfg.get("smtp_password"):
+        print("SMTP not configured; skipping email:", subject)
         return False, "SMTP not configured"
     try:
         msg = EmailMessage()
-        msg["From"] = from_email
+        msg["From"] = cfg.get("from_email", cfg.get("smtp_user"))
         msg["To"] = to_email
         msg["Subject"] = subject
         msg.set_content(body)
-        with smtplib.SMTP_SSL(smtp_server, int(smtp_port)) as server:
-            server.login(smtp_user, smtp_password)
+        with smtplib.SMTP_SSL(cfg["smtp_server"], int(cfg["smtp_port"])) as server:
+            server.login(cfg["smtp_user"], cfg["smtp_password"])
             server.send_message(msg)
-        return True, "Email sent"
+        return True, "sent"
     except Exception as e:
         print("Failed to send email:", e)
         return False, str(e)
 
 # ----------------------- Pending clients (signup) -----------------------
-def add_pending_client(name: str, username: str, password: str, invested: float, join_date: str, note: str=""):
+def add_pending_client(name: str, username: str, email: Optional[str], password: str, invested: float, join_date: str, note: str=""):
     pw = hash_password(password)
-    run_query("INSERT INTO pending_clients (name, username, password, invested, join_date, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", 
-              (name, username, pw, invested, join_date, note, datetime.utcnow().isoformat()))
+    run_query("INSERT INTO pending_clients (name, username, email, password, invested, join_date, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+              (name, username, email, pw, invested, join_date, note, datetime.utcnow().isoformat()))
 
 def list_pending_clients_df():
-    rows = run_query("SELECT id, name, username, invested, join_date, note, created_at FROM pending_clients ORDER BY created_at", fetch=True)
-    return pd.DataFrame(rows, columns=["id","name","username","invested","join_date","note","created_at"]) if rows else pd.DataFrame(columns=["id","name","username","invested","join_date","note","created_at"])
+    rows = run_query("SELECT id, name, username, email, invested, join_date, note, created_at FROM pending_clients ORDER BY created_at", fetch=True)
+    return pd.DataFrame(rows, columns=["id","name","username","email","invested","join_date","note","created_at"]) if rows else pd.DataFrame(columns=["id","name","username","email","invested","join_date","note","created_at"])
 
 def get_pending_by_id(pid: int):
-    rows = run_query("SELECT id, name, username, password, invested, join_date, note, created_at FROM pending_clients WHERE id=?", (pid,), fetch=True)
+    rows = run_query("SELECT id, name, username, email, password, invested, join_date, note, created_at FROM pending_clients WHERE id=?", (pid,), fetch=True)
     if rows:
         r = rows[0]
-        return {"id": r[0], "name": r[1], "username": r[2], "password": r[3], "invested": r[4], "join_date": r[5], "note": r[6], "created_at": r[7]}
+        return {"id": r[0], "name": r[1], "username": r[2], "email": r[3], "password": r[4], "invested": r[5], "join_date": r[6], "note": r[7], "created_at": r[8]}
     return None
 
 def log_approval_action(pending_id:int, action:str, admin_username:str, reason:str=""):
@@ -154,11 +177,15 @@ def approve_pending_client(pid: int, admin_username:str):
     if not p:
         return False, "Pending request not found"
     try:
-        run_query("INSERT INTO clients (name, username, invested, join_date, note, password) VALUES (?, ?, ?, ?, ?, ?)", 
-                  (p["name"], p["username"], p["invested"], p["join_date"], p["note"], p["password"]))
+        run_query("INSERT INTO clients (name, username, email, invested, join_date, note, password) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                  (p["name"], p["username"], p["email"], p["invested"], p["join_date"], p["note"], p["password"]))
         run_query("DELETE FROM pending_clients WHERE id=?", (pid,))
         log_approval_action(pid, "approved", admin_username, "")
-        # Optionally send email to user if admin configured email and if we had their email (we don't collect email in this form)
+        # send email if available
+        if p.get("email"):
+            subject = "Account Approved - Investment Consortium"
+            body = f"Hi {p['name']},\n\nYour account '{p['username']}' has been approved by admin and is ready to use.\n\nRegards."
+            send_email(p["email"], subject, body)
         return True, "Approved and client created"
     except Exception as e:
         return False, str(e)
@@ -169,6 +196,10 @@ def reject_pending_client(pid: int, admin_username:str, reason:str=""):
         return False, "Pending request not found"
     run_query("DELETE FROM pending_clients WHERE id=?", (pid,))
     log_approval_action(pid, "rejected", admin_username, reason)
+    if p.get("email"):
+        subject = "Account Rejected - Investment Consortium"
+        body = f"Hi {p['name']},\n\nYour signup request '{p['username']}' was rejected by admin.\nReason: {reason}\n\nRegards."
+        send_email(p["email"], subject, body)
     return True, "Rejected"
 
 def list_approvals_history_df():
@@ -181,18 +212,18 @@ def is_username_taken(username: str) -> bool:
     return bool(rows1 or rows2)
 
 # ----------------------- Clients CRUD & auth -----------------------
-def add_client(name, invested, join_date, note="", password="client123", username: Optional[str]=None):
+def add_client(name, invested, join_date, note="", password="client123", username: Optional[str]=None, email: Optional[str]=None):
     hashed_pw = hash_password(password)
-    run_query("INSERT INTO clients (name, username, invested, join_date, note, password) VALUES (?, ?, ?, ?, ?, ?)", 
-              (name, username, invested, join_date, note, hashed_pw))
+    run_query("INSERT INTO clients (name, username, email, invested, join_date, note, password) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+              (name, username, email, invested, join_date, note, hashed_pw))
 
-def update_client(client_id, name, invested, join_date, note="", password=None, username: Optional[str]=None):
+def update_client(client_id, name, invested, join_date, note="", password=None, username: Optional[str]=None, email: Optional[str]=None):
     if password:
-        run_query("UPDATE clients SET name=?, invested=?, join_date=?, note=?, password=?, username=? WHERE id=?", 
-                 (name, invested, join_date, note, hash_password(password), username, client_id))
+        run_query("UPDATE clients SET name=?, invested=?, join_date=?, note=?, password=?, username=?, email=? WHERE id=?", 
+                 (name, invested, join_date, note, hash_password(password), username, email, client_id))
     else:
-        run_query("UPDATE clients SET name=?, invested=?, join_date=?, note=?, username=? WHERE id=?", 
-                 (name, invested, join_date, note, username, client_id))
+        run_query("UPDATE clients SET name=?, invested=?, join_date=?, note=?, username=?, email=? WHERE id=?", 
+                 (name, invested, join_date, note, username, email, client_id))
 
 def change_client_password(client_id:int, new_password:str):
     run_query("UPDATE clients SET password=? WHERE id=?", (hash_password(new_password), client_id))
@@ -201,21 +232,21 @@ def delete_client(client_id):
     run_query("DELETE FROM clients WHERE id=?", (client_id,))
 
 def list_clients_df():
-    rows = run_query("SELECT id, name, username, invested, join_date, note FROM clients ORDER BY id", fetch=True)
-    return pd.DataFrame(rows, columns=["id","name","username","invested","join_date","note"]) if rows else pd.DataFrame(columns=["id","name","username","invested","join_date","note"])
+    rows = run_query("SELECT id, name, username, email, invested, join_date, note FROM clients ORDER BY id", fetch=True)
+    return pd.DataFrame(rows, columns=["id","name","username","email","invested","join_date","note"]) if rows else pd.DataFrame(columns=["id","name","username","email","invested","join_date","note"])
 
 def get_client_by_id(client_id):
-    rows = run_query("SELECT id, name, username, invested, join_date, note FROM clients WHERE id=?", (client_id,), fetch=True)
+    rows = run_query("SELECT id, name, username, email, invested, join_date, note FROM clients WHERE id=?", (client_id,), fetch=True)
     if rows:
         r = rows[0]
-        return {"id": r[0], "name": r[1], "username": r[2], "invested": r[3], "join_date": r[4], "note": r[5]}
+        return {"id": r[0], "name": r[1], "username": r[2], "email": r[3], "invested": r[4], "join_date": r[5], "note": r[6]}
     return None
 
 def get_client_by_username(username):
-    rows = run_query("SELECT id, name, username, invested, join_date, note FROM clients WHERE username=?", (username,), fetch=True)
+    rows = run_query("SELECT id, name, username, email, invested, join_date, note FROM clients WHERE username=?", (username,), fetch=True)
     if rows:
         r = rows[0]
-        return {"id": r[0], "name": r[1], "username": r[2], "invested": r[3], "join_date": r[4], "note": r[5]}
+        return {"id": r[0], "name": r[1], "username": r[2], "email": r[3], "invested": r[4], "join_date": r[5], "note": r[6]}
     return None
 
 def verify_admin(username, password):
@@ -236,14 +267,33 @@ def verify_client_by_username(username, password):
         return rows[0][0] == hash_password(password)
     return False
 
-# ----------------------- Profits & Allocations (unchanged) -----------------------
+# ----------------------- Password reset flows -----------------------
+def create_password_reset_token(client_id:int):
+    token = pysecrets.token_urlsafe(16)
+    expires = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRY_MIN)
+    run_query("INSERT INTO password_resets (client_id, token, expires_at, used) VALUES (?, ?, ?, 0)", (client_id, token, expires.isoformat()))
+    return token, expires
+
+def verify_reset_token(token:str):
+    rows = run_query("SELECT id, client_id, expires_at, used FROM password_resets WHERE token=?", (token,), fetch=True)
+    if not rows:
+        return None
+    rid, client_id, expires_at, used = rows[0]
+    if used:
+        return None
+    if datetime.fromisoformat(expires_at) < datetime.utcnow():
+        return None
+    return {"reset_id": rid, "client_id": client_id}
+
+def mark_reset_used(reset_id:int):
+    run_query("UPDATE password_resets SET used=1 WHERE id=?", (reset_id,))
+
+# ----------------------- Profits & Allocations -----------------------
 def add_profit(profit_date, total_profit, note=""):
-    run_query("INSERT OR REPLACE INTO profits (profit_date, total_profit, note) VALUES (?, ?, ?)", 
-              (profit_date, total_profit, note))
+    run_query("INSERT OR REPLACE INTO profits (profit_date, total_profit, note) VALUES (?, ?, ?)", (profit_date, total_profit, note))
 
 def update_profit(profit_id, profit_date, total_profit, note=""):
-    run_query("UPDATE profits SET profit_date=?, total_profit=?, note=? WHERE id=?", 
-              (profit_date, total_profit, note, profit_id))
+    run_query("UPDATE profits SET profit_date=?, total_profit=?, note=? WHERE id=?", (profit_date, total_profit, note, profit_id))
 
 def delete_profit(profit_id):
     run_query("DELETE FROM profits WHERE id=?", (profit_id,))
@@ -255,7 +305,7 @@ def list_profits_df():
 def allocations_for_date(target_date):
     clients = list_clients_df()
     if clients.empty:
-        return pd.DataFrame(columns=["id","name","username","invested","join_date","active","share","alloc_profit"])
+        return pd.DataFrame(columns=["id","name","username","email","invested","join_date","active","share","alloc_profit"])
     clients["join_date"] = pd.to_datetime(clients["join_date"]).dt.date
     if isinstance(target_date, str):
         target = datetime.strptime(target_date, "%Y-%m-%d").date()
@@ -279,13 +329,11 @@ def compute_client_timeseries():
         return {}, profits, clients
     profits["profit_date"] = pd.to_datetime(profits["profit_date"]).dt.date
     clients["join_date"] = pd.to_datetime(clients["join_date"]).dt.date
-
     profits = profits.sort_values("profit_date")
     client_ids = clients["id"].tolist()
     timeseries = {cid: [] for cid in client_ids}
     dates = []
     cum_gain = {cid: 0.0 for cid in client_ids}
-
     for _, row in profits.iterrows():
         d = row["profit_date"]
         dates.append(d)
@@ -311,14 +359,7 @@ def compute_client_timeseries():
         invested = c["invested"]
         gains = timeseries[cid] if len(timeseries[cid])>0 else []
         pct = [(g / invested * 100) if invested>0 else 0.0 for g in gains]
-        result[cid] = {
-            "name": c["name"],
-            "invested": invested,
-            "join_date": c["join_date"],
-            "dates": dates,
-            "cumulative_gain": gains,
-            "pct_return": pct
-        }
+        result[cid] = {"name": c["name"], "invested": invested, "join_date": c["join_date"], "dates": dates, "cumulative_gain": gains, "pct_return": pct}
     return result, profits, clients
 
 def get_client_timeseries(client_id):
@@ -337,7 +378,7 @@ def get_dashboard_metrics():
 def load_css():
     st.markdown("<style> body {background-color: #0e1117; color: #fff;} </style>", unsafe_allow_html=True)
 
-# ----------------------- UI: Admin -----------------------
+# ----------------------- UI: Admin Panel -----------------------
 def admin_panel():
     st.title("🔐 Admin Dashboard")
     st.markdown("---")
@@ -354,23 +395,22 @@ def admin_panel():
                         ok, msg = approve_pending_client(int(row['id']), st.session_state.get('username','admin'))
                         if ok:
                             st.success(f"Approved: {row['name']} ({row['username']})")
-                            # optionally notify via email (not collected here)
                             safe_rerun()
                         else:
                             st.error(f"Failed to approve: {msg}")
                 with cols[1]:
                     if st.button(f"❌ Reject##{row['id']}", key=f"reject_{row['id']}"):
-                        # ask for reason in a small modal-like input using text_input with unique key
-                        reason = st.text_input(f"Reason for reject {row['id']}", key=f"reject_reason_{row['id']}")
-                        if st.button(f"Confirm Reject##{row['id']}", key=f"confirm_reject_{row['id']}"):
-                            ok, msg = reject_pending_client(int(row['id']), st.session_state.get('username','admin'), reason or "")
-                            if ok:
-                                st.warning(f"Rejected: {row['name']} ({row['username']})")
-                                safe_rerun()
-                            else:
-                                st.error(f"Failed to reject: {msg}")
+                        st.session_state[f"reject_reason_{row['id']}"] = ""
+                    reason = st.text_input(f"Reason for reject {row['id']}", key=f"reject_reason_{row['id']}")
+                    if st.button(f"Confirm Reject##{row['id']}", key=f"confirm_reject_{row['id']}"):
+                        ok, msg = reject_pending_client(int(row['id']), st.session_state.get('username','admin'), reason or "")
+                        if ok:
+                            st.warning(f"Rejected: {row['name']} ({row['username']})")
+                            safe_rerun()
+                        else:
+                            st.error(f"Failed to reject: {msg}")
                 with cols[2]:
-                    st.write(f"Notes: {row['note'] or '-'}  |  Requested at: {row['created_at']}")
+                    st.write(f"Notes: {row['note'] or '-'}  |  Requested at: {row['created_at']}  |  Email: {row['email'] or '-'}")
     st.markdown("---")
     tab1, tab2, tab3, tab4 = st.tabs(["👥 Client Management", "💹 Profit Management", "📊 Share Profit", "🔔 Approvals History"])
     with tab1:
@@ -381,6 +421,7 @@ def admin_panel():
                 with st.form("add_client_form_admin"):
                     name = st.text_input("Client Name *")
                     username = st.text_input("Username (unique) *")
+                    email = st.text_input("Email (optional)")
                     invested = st.number_input("Investment Amount (Rp) *", min_value=0.0, format="%.2f")
                     join_date = st.date_input("Join Date *", value=date_class.today())
                     password = st.text_input("Client Password *", type="password", help="Password for client login")
@@ -392,7 +433,7 @@ def admin_panel():
                         elif is_username_taken(username):
                             st.error("Username already taken")
                         elif name and invested > 0 and password:
-                            add_client(name, float(invested), join_date.isoformat(), note, password, username)
+                            add_client(name, float(invested), join_date.isoformat(), note, password, username, email)
                             st.success(f"✅ Client '{name}' added successfully!")
                             safe_rerun()
                         else:
@@ -411,6 +452,7 @@ def admin_panel():
                     with st.form("edit_client_form_admin"):
                         e_name = st.text_input("Name", value=row["name"])
                         e_username = st.text_input("Username", value=row["username"])
+                        e_email = st.text_input("Email", value=row["email"])
                         e_invested = st.number_input("Invested", value=float(row["invested"]), min_value=0.0)
                         e_join = st.date_input("Join Date", value=pd.to_datetime(row["join_date"]).date())
                         e_note = st.text_area("Note", value=row["note"], height=100)
@@ -425,9 +467,9 @@ def admin_panel():
                                 st.error("Username already taken by someone else")
                             else:
                                 if e_password:
-                                    update_client(edit_id, e_name, float(e_invested), e_join.isoformat(), e_note, e_password, e_username)
+                                    update_client(edit_id, e_name, float(e_invested), e_join.isoformat(), e_note, e_password, e_username, e_email)
                                 else:
-                                    update_client(edit_id, e_name, float(e_invested), e_join.isoformat(), e_note, None, e_username)
+                                    update_client(edit_id, e_name, float(e_invested), e_join.isoformat(), e_note, None, e_username, e_email)
                                 st.success("✅ Client updated successfully!")
                                 safe_rerun()
                         if delete:
@@ -481,9 +523,8 @@ def admin_panel():
             else:
                 st.info("📭 No profit entries yet. Add your first entry to get started!")
     with tab3:
-        st.subheader("📊 Share Profit")
-        st.info("View profit share distribution (kept minimal here)")
-        st.write("Use Profit Management to add profit and Client Management to see clients.")
+        st.subheader("📊 Share Profit (summary)")
+        st.info("Use Profit Management to add profit and Client Management to see clients.")
     with tab4:
         st.subheader("🔔 Approvals History")
         hist_df = list_approvals_history_df()
@@ -501,7 +542,7 @@ def client_dashboard(client_id):
         return
     st.title(f"📊 Welcome, {client_data['name']}!")
     st.markdown("---")
-    # change password option
+    # Change password
     with st.expander("🔐 Change Password"):
         old_pw = st.text_input("Current Password", type="password", key="cp_old")
         new_pw = st.text_input("New Password", type="password", key="cp_new")
@@ -573,7 +614,7 @@ def client_dashboard(client_id):
         else:
             st.info("No profit distribution data available for your account yet.")
 
-# ----------------------- Login & Signup -----------------------
+# ----------------------- Login / Signup / Reset -----------------------
 def admin_login_page():
     st.markdown("<div style='text-align:center;padding:2rem;'><h1>🔐 Admin Portal</h1></div>", unsafe_allow_html=True)
     with st.form("admin_login_form"):
@@ -638,11 +679,11 @@ def client_signup_page():
         st.markdown("### Create your account (will be approved by admin)")
         name = st.text_input("Full Name *")
         username = st.text_input("Desired Username *")
+        email = st.text_input("Email (optional) - used for notifications")
         password = st.text_input("Password *", type="password")
         invested = st.number_input("Investment Amount (Rp) *", min_value=0.0, format="%.2f")
         join_date = st.date_input("Join Date *", value=date_class.today())
         note = st.text_area("Notes (optional)", height=100)
-        email = st.text_input("Email (optional) - used for notifications", help="Provide email if you want to receive approval notifications")
         submit = st.form_submit_button("📝 Submit Signup Request")
         if submit:
             if not name or not username or not password or invested <= 0:
@@ -650,9 +691,62 @@ def client_signup_page():
             elif is_username_taken(username):
                 st.error("Username already taken or pending")
             else:
-                add_pending_client(name, username, password, float(invested), join_date.isoformat(), note)
+                add_pending_client(name, username, email or None, password, float(invested), join_date.isoformat(), note)
                 st.success("✅ Signup request submitted. Please wait for admin approval.")
-                st.info("Admin will see your request in the dashboard and can approve it. Once approved you can login using your username and password.")
+                if email:
+                    st.info("If email provided, you will get notified upon approval/rejection.")
+
+def password_reset_request_page():
+    st.markdown("<div style='text-align:center;padding:2rem;'><h1>🔁 Password Reset</h1></div>", unsafe_allow_html=True)
+    with st.form("pw_reset_request_form"):
+        identifier = st.text_input("Enter your username or client ID to request password reset")
+        submit = st.form_submit_button("Request Reset")
+        if submit:
+            if not identifier:
+                st.error("Please enter username or client ID")
+            else:
+                client = None
+                try:
+                    cid = int(identifier)
+                    client = get_client_by_id(cid)
+                except Exception:
+                    client = get_client_by_username(identifier)
+                if not client:
+                    st.error("Client not found")
+                else:
+                    token, expires = create_password_reset_token(client["id"])
+                    if client.get("email"):
+                        reset_link = f"RESET TOKEN: {token} (expires in {RESET_TOKEN_EXPIRY_MIN} minutes)"
+                        ok, msg = send_email(client["email"], "Password Reset Request", f"Hi {client['name']},\n\nUse this token to reset your password:\n\n{reset_link}\n\nIf you did not request this, ignore.\n")
+                        if ok:
+                            st.success("Password reset token emailed to your address")
+                        else:
+                            st.warning("Failed to send email. Token shown below")
+                            st.info(f"Token: {token}")
+                    else:
+                        st.info("No email on file — token shown below (keep it secret)")
+                        st.info(f"Token: {token} (expires in {RESET_TOKEN_EXPIRY_MIN} minutes)")
+
+def password_reset_confirm_page():
+    st.markdown("<div style='text-align:center;padding:2rem;'><h1>🔁 Confirm Password Reset</h1></div>", unsafe_allow_html=True)
+    with st.form("pw_reset_confirm_form"):
+        token = st.text_input("Enter reset token")
+        new_pw = st.text_input("New password", type="password")
+        confirm_pw = st.text_input("Confirm new password", type="password")
+        submit = st.form_submit_button("Reset Password")
+        if submit:
+            if not token or not new_pw:
+                st.error("Please provide token and new password")
+            elif new_pw != confirm_pw:
+                st.error("Passwords do not match")
+            else:
+                v = verify_reset_token(token)
+                if not v:
+                    st.error("Invalid or expired token")
+                else:
+                    change_client_password(v["client_id"], new_pw)
+                    mark_reset_used(v["reset_id"])
+                    st.success("Password reset successful. You can now login with new password.")
 
 # ----------------------- Main -----------------------
 def main():
@@ -688,6 +782,9 @@ def main():
             if st.button("📝 Client Sign Up"):
                 st.session_state["login_page"] = "signup"
                 safe_rerun()
+            if st.button("🔁 Password Reset"):
+                st.session_state["login_page"] = "pw_reset_request"
+                safe_rerun()
     if st.session_state["user_type"] is None:
         page = st.session_state.get("login_page", "welcome")
         if page == "admin":
@@ -696,6 +793,10 @@ def main():
             client_login_page()
         elif page == "signup":
             client_signup_page()
+        elif page == "pw_reset_request":
+            password_reset_request_page()
+        elif page == "pw_reset_confirm":
+            password_reset_confirm_page()
         else:
             st.markdown("<div style='text-align:center;padding:3rem;'><h1>Welcome to Investment Consortium</h1></div>", unsafe_allow_html=True)
     elif st.session_state["user_type"] == "admin":
