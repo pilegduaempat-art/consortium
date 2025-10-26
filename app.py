@@ -1,16 +1,13 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-from datetime import datetime, timedelta
-from datetime import date as date_class
+from datetime import datetime, date as date_class
 import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
 import hashlib
+from typing import Optional
 
 DB_PATH = "data.db"
 
-# ----------------------- Page Config -----------------------
 st.set_page_config(
     page_title="Investment Consortium Dashboard",
     page_icon="💰",
@@ -18,373 +15,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ----------------------- Custom CSS -----------------------
-def load_css():
-    st.markdown("""
-    <style>
-    /* Dark theme colors */
-    :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
-        --success-color: #2ecc71;
-        --danger-color: #e74c3c;
-        --warning-color: #f39c12;
-        --bg-dark: #0e1117;
-        --bg-secondary: #1a1d29;
-        --bg-card: #262730;
-        --text-primary: #ffffff;
-        --text-secondary: #b8b9bf;
-        --border-color: #2d3139;
-    }
-    
-    /* Main background */
-    .stApp {
-        background-color: var(--bg-dark);
-        color: var(--text-primary);
-    }
-    
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    /* Custom card styling with dark theme */
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-        color: white;
-        margin: 10px 0;
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-    
-    .metric-card h3 {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 500;
-        opacity: 0.95;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .metric-card p {
-        margin: 10px 0 0 0;
-        font-size: 32px;
-        font-weight: 700;
-    }
-    
-    /* Login card styling */
-    .login-card {
-        background: var(--bg-card);
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        margin: 2rem 0;
-        border: 1px solid var(--border-color);
-    }
-    
-    /* Button styling */
-    .stButton>button {
-        border-radius: 8px;
-        border: none;
-        padding: 0.6rem 1.2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    }
-    
-    /* Input field styling */
-    .stTextInput>div>div>input, 
-    .stNumberInput>div>div>input,
-    .stTextArea textarea,
-    .stSelectbox>div>div>div,
-    .stDateInput>div>div>input {
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 0.6rem;
-        color: var(--text-primary);
-    }
-    
-    .stTextInput>div>div>input:focus,
-    .stNumberInput>div>div>input:focus,
-    .stTextArea textarea:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-    }
-    
-    /* DataFrame styling */
-    .dataframe {
-        border-radius: 8px;
-        overflow: hidden;
-        background-color: var(--bg-card);
-    }
-    
-    div[data-testid="stDataFrame"] {
-        background-color: var(--bg-card);
-        border-radius: 8px;
-    }
-    
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1a1d29 0%, #0e1117 100%);
-        border-right: 1px solid var(--border-color);
-    }
-    
-    [data-testid="stSidebar"] .stMarkdown {
-        color: var(--text-primary);
-    }
-    
-    [data-testid="stSidebar"] hr {
-        border-color: var(--border-color);
-    }
-    
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background-color: var(--bg-card);
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-    }
-    
-    .streamlit-expanderHeader:hover {
-        border-color: var(--primary-color);
-    }
-    
-    .streamlit-expanderContent {
-        background-color: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-top: none;
-    }
-    
-    /* Success/Error message styling */
-    .stSuccess {
-        background-color: rgba(46, 204, 113, 0.1);
-        border: 1px solid var(--success-color);
-        border-radius: 8px;
-        padding: 1rem;
-        color: var(--success-color);
-    }
-    
-    .stError {
-        background-color: rgba(231, 76, 60, 0.1);
-        border: 1px solid var(--danger-color);
-        border-radius: 8px;
-        padding: 1rem;
-        color: var(--danger-color);
-    }
-    
-    .stWarning {
-        background-color: rgba(243, 156, 18, 0.1);
-        border: 1px solid var(--warning-color);
-        border-radius: 8px;
-        padding: 1rem;
-        color: var(--warning-color);
-    }
-    
-    .stInfo {
-        background-color: rgba(102, 126, 234, 0.1);
-        border: 1px solid var(--primary-color);
-        border-radius: 8px;
-        padding: 1rem;
-        color: var(--primary-color);
-    }
-    
-    /* Title styling */
-    h1 {
-        color: var(--text-primary);
-        font-weight: 700;
-    }
-    
-    h2 {
-        color: var(--text-primary);
-        font-weight: 600;
-        margin-top: 2rem;
-    }
-    
-    h3 {
-        color: var(--text-secondary);
-        font-weight: 500;
-    }
-    
-    /* Tab styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: var(--bg-secondary);
-        padding: 8px;
-        border-radius: 8px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 10px 20px;
-        background-color: transparent;
-        color: var(--text-secondary);
-        border: 1px solid transparent;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        background-color: var(--bg-card);
-        color: var(--text-primary);
-    }
-    
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: var(--bg-card);
-        color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-    
-    /* Metric styling */
-    [data-testid="stMetricValue"] {
-        color: var(--text-primary);
-    }
-    
-    [data-testid="stMetricDelta"] {
-        color: var(--success-color);
-    }
-    
-    /* Radio button styling */
-    .stRadio > label {
-        color: var(--text-primary);
-    }
-    
-    /* Selectbox styling */
-    .stSelectbox label {
-        color: var(--text-primary);
-    }
-    
-    /* Multiselect styling */
-    .stMultiSelect label {
-        color: var(--text-primary);
-    }
-    
-    /* Download button styling */
-    .stDownloadButton>button {
-        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-        color: white;
-        border: none;
-    }
-    
-    .stDownloadButton>button:hover {
-        box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
-    }
-    
-    /* Form styling */
-    [data-testid="stForm"] {
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1rem;
-    }
-    
-    /* Divider */
-    hr {
-        border-color: var(--border-color);
-        margin: 2rem 0;
-    }
-    
-    /* Scrollbar styling */
-    ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-    }
-    
-    ::-webkit-scrollbar-track {
-        background: var(--bg-secondary);
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: var(--border-color);
-        border-radius: 5px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: var(--primary-color);
-    }
-    
-    /* Custom dark boxes */
-    .dark-box {
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-    
-    /* Label styling */
-    label {
-        color: var(--text-primary) !important;
-    }
-    
-    /* Plotly chart background */
-    .js-plotly-plot {
-        background-color: var(--bg-card) !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# ----------------------- Password Hashing -----------------------
-def hash_password(password):
+def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
-
-# ----------------------- Database helpers -----------------------
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Create clients table
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS clients (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        invested REAL NOT NULL,
-        join_date TEXT NOT NULL,
-        note TEXT
-    )""")
-    
-    # Check if password column exists, if not add it
-    c.execute("PRAGMA table_info(clients)")
-    columns = [column[1] for column in c.fetchall()]
-    if 'password' not in columns:
-        c.execute("ALTER TABLE clients ADD COLUMN password TEXT")
-        # Set default password for existing clients
-        default_password = hash_password("client123")
-        c.execute("UPDATE clients SET password = ? WHERE password IS NULL", (default_password,))
-        print("✅ Added password column to clients table and set default passwords")
-    
-    # Create profits table
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS profits (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        profit_date TEXT NOT NULL UNIQUE,
-        total_profit REAL NOT NULL,
-        note TEXT
-    )""")
-    
-    # Create admin_users table
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS admin_users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL
-    )""")
-    
-    # Create default admin if not exists
-    c.execute("SELECT COUNT(*) FROM admin_users WHERE username='admin'")
-    if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO admin_users (username, password) VALUES (?, ?)", 
-                 ("admin", hash_password("admin123")))
-        print("✅ Created default admin user")
-    
-    conn.commit()
-    conn.close()
-    print("✅ Database initialized successfully")
 
 def run_query(query, params=(), fetch=False):
     conn = sqlite3.connect(DB_PATH)
@@ -397,51 +29,136 @@ def run_query(query, params=(), fetch=False):
     conn.commit()
     conn.close()
 
-# ----------------------- Authentication -----------------------
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        username TEXT UNIQUE,
+        invested REAL NOT NULL,
+        join_date TEXT NOT NULL,
+        note TEXT,
+        password TEXT
+    )""")
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS pending_clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        invested REAL NOT NULL,
+        join_date TEXT NOT NULL,
+        note TEXT,
+        created_at TEXT NOT NULL
+    )""")
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS profits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profit_date TEXT NOT NULL UNIQUE,
+        total_profit REAL NOT NULL,
+        note TEXT
+    )""")
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS admin_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL
+    )""")
+    c.execute("SELECT COUNT(*) FROM admin_users WHERE username='admin'")
+    if c.fetchone()[0] == 0:
+        c.execute("INSERT INTO admin_users (username, password) VALUES (?, ?)", ("admin", hash_password("admin123")))
+    conn.commit()
+    conn.close()
+
+def add_pending_client(name: str, username: str, password: str, invested: float, join_date: str, note: str=""):
+    pw = hash_password(password)
+    run_query("INSERT INTO pending_clients (name, username, password, invested, join_date, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+              (name, username, pw, invested, join_date, note, datetime.utcnow().isoformat()))
+
+def list_pending_clients_df():
+    rows = run_query("SELECT id, name, username, invested, join_date, note, created_at FROM pending_clients ORDER BY created_at", fetch=True)
+    return pd.DataFrame(rows, columns=["id","name","username","invested","join_date","note","created_at"]) if rows else pd.DataFrame(columns=["id","name","username","invested","join_date","note","created_at"])
+
+def get_pending_by_id(pid: int):
+    rows = run_query("SELECT id, name, username, password, invested, join_date, note, created_at FROM pending_clients WHERE id=?", (pid,), fetch=True)
+    if rows:
+        r = rows[0]
+        return {"id": r[0], "name": r[1], "username": r[2], "password": r[3], "invested": r[4], "join_date": r[5], "note": r[6], "created_at": r[7]}
+    return None
+
+def approve_pending_client(pid: int):
+    p = get_pending_by_id(pid)
+    if not p:
+        return False, "Pending request not found"
+    try:
+        run_query("INSERT INTO clients (name, username, invested, join_date, note, password) VALUES (?, ?, ?, ?, ?, ?)", 
+                  (p["name"], p["username"], p["invested"], p["join_date"], p["note"], p["password"]))
+        run_query("DELETE FROM pending_clients WHERE id=?", (pid,))
+        return True, "Approved and client created"
+    except Exception as e:
+        return False, str(e)
+
+def reject_pending_client(pid: int):
+    run_query("DELETE FROM pending_clients WHERE id=?", (pid,))
+
+def is_username_taken(username: str) -> bool:
+    rows1 = run_query("SELECT 1 FROM clients WHERE username=?", (username,), fetch=True)
+    rows2 = run_query("SELECT 1 FROM pending_clients WHERE username=?", (username,), fetch=True)
+    return bool(rows1 or rows2)
+
+def add_client(name, invested, join_date, note="", password="client123", username: Optional[str]=None):
+    hashed_pw = hash_password(password)
+    run_query("INSERT INTO clients (name, username, invested, join_date, note, password) VALUES (?, ?, ?, ?, ?, ?)", 
+              (name, username, invested, join_date, note, hashed_pw))
+
+def update_client(client_id, name, invested, join_date, note="", password=None, username: Optional[str]=None):
+    if password:
+        run_query("UPDATE clients SET name=?, invested=?, join_date=?, note=?, password=?, username=? WHERE id=?", 
+                 (name, invested, join_date, note, hash_password(password), username, client_id))
+    else:
+        run_query("UPDATE clients SET name=?, invested=?, join_date=?, note=?, username=? WHERE id=?", 
+                 (name, invested, join_date, note, username, client_id))
+
+def delete_client(client_id):
+    run_query("DELETE FROM clients WHERE id=?", (client_id,))
+
+def list_clients_df():
+    rows = run_query("SELECT id, name, username, invested, join_date, note FROM clients ORDER BY id", fetch=True)
+    return pd.DataFrame(rows, columns=["id","name","username","invested","join_date","note"]) if rows else pd.DataFrame(columns=["id","name","username","invested","join_date","note"])
+
+def get_client_by_id(client_id):
+    rows = run_query("SELECT id, name, username, invested, join_date, note FROM clients WHERE id=?", (client_id,), fetch=True)
+    if rows:
+        r = rows[0]
+        return {"id": r[0], "name": r[1], "username": r[2], "invested": r[3], "join_date": r[4], "note": r[5]}
+    return None
+
+def get_client_by_username(username):
+    rows = run_query("SELECT id, name, username, invested, join_date, note FROM clients WHERE username=?", (username,), fetch=True)
+    if rows:
+        r = rows[0]
+        return {"id": r[0], "name": r[1], "username": r[2], "invested": r[3], "join_date": r[4], "note": r[5]}
+    return None
+
 def verify_admin(username, password):
     rows = run_query("SELECT password FROM admin_users WHERE username=?", (username,), fetch=True)
     if rows:
         return rows[0][0] == hash_password(password)
     return False
 
-def verify_client(client_id, password):
+def verify_client_by_id(client_id, password):
     rows = run_query("SELECT password FROM clients WHERE id=?", (client_id,), fetch=True)
     if rows:
         return rows[0][0] == hash_password(password)
     return False
 
-def get_client_by_id(client_id):
-    rows = run_query("SELECT id, name, invested, join_date, note FROM clients WHERE id=?", (client_id,), fetch=True)
+def verify_client_by_username(username, password):
+    rows = run_query("SELECT password FROM clients WHERE username=?", (username,), fetch=True)
     if rows:
-        return {
-            "id": rows[0][0],
-            "name": rows[0][1],
-            "invested": rows[0][2],
-            "join_date": rows[0][3],
-            "note": rows[0][4]
-        }
-    return None
-
-# ----------------------- CRUD operations -----------------------
-def add_client(name, invested, join_date, note="", password=""):
-    hashed_pw = hash_password(password) if password else hash_password("client123")
-    run_query("INSERT INTO clients (name, invested, join_date, note, password) VALUES (?, ?, ?, ?, ?)", 
-              (name, invested, join_date, note, hashed_pw))
-
-def update_client(client_id, name, invested, join_date, note="", password=None):
-    if password:
-        run_query("UPDATE clients SET name=?, invested=?, join_date=?, note=?, password=? WHERE id=?", 
-                 (name, invested, join_date, note, hash_password(password), client_id))
-    else:
-        run_query("UPDATE clients SET name=?, invested=?, join_date=?, note=? WHERE id=?", 
-                 (name, invested, join_date, note, client_id))
-
-def delete_client(client_id):
-    run_query("DELETE FROM clients WHERE id=?", (client_id,))
-
-def list_clients_df():
-    rows = run_query("SELECT id, name, invested, join_date, note FROM clients ORDER BY id", fetch=True)
-    return pd.DataFrame(rows, columns=["id","name","invested","join_date","note"]) if rows else pd.DataFrame(columns=["id","name","invested","join_date","note"])
+        return rows[0][0] == hash_password(password)
+    return False
 
 def add_profit(profit_date, total_profit, note=""):
     run_query("INSERT OR REPLACE INTO profits (profit_date, total_profit, note) VALUES (?, ?, ?)", 
@@ -458,13 +175,17 @@ def list_profits_df():
     rows = run_query("SELECT id, profit_date, total_profit, note FROM profits ORDER BY profit_date", fetch=True)
     return pd.DataFrame(rows, columns=["id","profit_date","total_profit","note"]) if rows else pd.DataFrame(columns=["id","profit_date","total_profit","note"])
 
-# ----------------------- Allocation & calculations -----------------------
 def allocations_for_date(target_date):
     clients = list_clients_df()
     if clients.empty:
-        return pd.DataFrame(columns=["id","name","invested","join_date","active","share","alloc_profit"])
+        return pd.DataFrame(columns=["id","name","username","invested","join_date","active","share","alloc_profit"])
     clients["join_date"] = pd.to_datetime(clients["join_date"]).dt.date
-    target = datetime.strptime(target_date, "%Y-%m-%d").date() if isinstance(target_date, str) else target_date
+    if isinstance(target_date, str):
+        target = datetime.strptime(target_date, "%Y-%m-%d").date()
+    elif isinstance(target_date, datetime):
+        target = target_date.date()
+    else:
+        target = target_date
     clients["active"] = clients["join_date"] <= target
     active_sum = clients.loc[clients["active"], "invested"].sum()
     if active_sum == 0:
@@ -526,11 +247,9 @@ def compute_client_timeseries():
     return result, profits, clients
 
 def get_client_timeseries(client_id):
-    """Get timeseries data for a specific client"""
     result, profits, clients = compute_client_timeseries()
     return result.get(client_id, None)
 
-# ----------------------- Dashboard Metrics -----------------------
 def get_dashboard_metrics():
     clients = list_clients_df()
     profits = list_profits_df()
@@ -547,556 +266,197 @@ def get_dashboard_metrics():
         "avg_return": avg_return
     }
 
-# ----------------------- Admin Panel -----------------------
+def load_css():
+    st.markdown("<style> body {background-color: #0e1117; color: #fff;} </style>", unsafe_allow_html=True)
+
 def admin_panel():
     st.title("🔐 Admin Dashboard")
     st.markdown("---")
-    
-    # Metrics Overview
-    metrics = get_dashboard_metrics()
-    
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <h3>👥 Total Clients</h3>
-            <p>{metrics['total_clients']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-            <h3>💰 Total Invested</h3>
-            <p>Rp {metrics['total_invested']:,.0f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-            <h3>📈 Total Profit</h3>
-            <p>Rp {metrics['total_profit']:,.0f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-            <h3>📊 Avg Return</h3>
-            <p>{metrics['avg_return']:.2f}%</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Tabs for better organization
+    pending_df = list_pending_clients_df()
+    pending_count = len(pending_df)
+    st.write(f"🔔 Pending signups: **{pending_count}**")
+    if pending_count > 0:
+        with st.expander(f"View {pending_count} pending signup(s)", expanded=True):
+            for _, row in pending_df.iterrows():
+                st.markdown(f"**ID {row['id']} — {row['name']} ({row['username']})** — Invested: Rp {row['invested']:,.0f} — Joined: {row['join_date']}")
+                cols = st.columns([1,1,4])
+                with cols[0]:
+                    if st.button(f"✅ Approve##{row['id']}", key=f"approve_{row['id']}"):
+                        ok, msg = approve_pending_client(int(row['id']))
+                        if ok:
+                            st.success(f"Approved: {row['name']} ({row['username']})")
+                            st.experimental_rerun()
+                        else:
+                            st.error(f"Failed to approve: {msg}")
+                with cols[1]:
+                    if st.button(f"❌ Reject##{row['id']}", key=f"reject_{row['id']}"):
+                        reject_pending_client(int(row['id']))
+                        st.warning(f"Rejected: {row['name']} ({row['username']})")
+                        st.experimental_rerun()
+                with cols[2]:
+                    st.write(f"Notes: {row['note'] or '-'}  |  Requested at: {row['created_at']}")
+    st.markdown("---")
     tab1, tab2, tab3 = st.tabs(["👥 Client Management", "💹 Profit Management", "📊 Share Profit"])
-    
     with tab1:
         st.subheader("Client Management")
-        
-        # Check if there are clients with default password
-        clients_df = list_clients_df()
-        if not clients_df.empty:
-            # Check for clients that might have default password
-            st.info("ℹ️ **Note:** Existing clients from old database have default password: `client123`. Please update their passwords for security.")
-        
-        col1, col2 = st.columns([1, 2])
-        
+        col1, col2 = st.columns([1,2])
         with col1:
-            with st.expander("➕ Add New Client", expanded=True):
-                with st.form("add_client_form"):
+            with st.expander("➕ Add New Client (admin created)", expanded=True):
+                with st.form("add_client_form_admin"):
                     name = st.text_input("Client Name *")
+                    username = st.text_input("Username (unique) *")
                     invested = st.number_input("Investment Amount (Rp) *", min_value=0.0, format="%.2f")
                     join_date = st.date_input("Join Date *", value=date_class.today())
                     password = st.text_input("Client Password *", type="password", help="Password for client login")
                     note = st.text_area("Notes (optional)", height=100)
                     submit = st.form_submit_button("💾 Add Client", use_container_width=True)
-                    
                     if submit:
-                        if name and invested > 0 and password:
-                            add_client(name, float(invested), join_date.isoformat(), note, password)
+                        if not username:
+                            st.error("Username required")
+                        elif is_username_taken(username):
+                            st.error("Username already taken")
+                        elif name and invested > 0 and password:
+                            add_client(name, float(invested), join_date.isoformat(), note, password, username)
                             st.success(f"✅ Client '{name}' added successfully!")
-                            st.rerun()
+                            st.experimental_rerun()
                         else:
-                            st.error("⚠️ Please fill in all required fields including password")
-        
+                            st.error("Please fill required fields")
         with col2:
             clients_df = list_clients_df()
             if not clients_df.empty:
-                st.markdown("### 📋 Current Clients")
-                
-                # Format the dataframe for better display
                 display_df = clients_df.copy()
                 display_df["invested"] = display_df["invested"].apply(lambda x: f"Rp {x:,.0f}")
                 display_df["join_date"] = pd.to_datetime(display_df["join_date"]).dt.strftime("%d %b %Y")
-                
-                st.dataframe(
-                    display_df,
-                    use_container_width=True,
-                    height=400,
-                    hide_index=True
-                )
-                
+                st.dataframe(display_df, use_container_width=True, height=300)
                 st.markdown("### ✏️ Edit / Delete Client")
-                edit_id = st.selectbox(
-                    "Select Client ID", 
-                    clients_df["id"].tolist(),
-                    format_func=lambda x: f"ID {x} - {clients_df[clients_df['id']==x]['name'].iloc[0]}"
-                )
-                
+                edit_id = st.selectbox("Select Client ID", clients_df["id"].tolist(), format_func=lambda x: f"ID {x} - {clients_df[clients_df['id']==x]['name'].iloc[0]}")
                 if edit_id:
                     row = clients_df[clients_df["id"]==edit_id].iloc[0]
-                    
-                    with st.form("edit_client_form"):
+                    with st.form("edit_client_form_admin"):
                         e_name = st.text_input("Name", value=row["name"])
+                        e_username = st.text_input("Username", value=row["username"])
                         e_invested = st.number_input("Invested", value=float(row["invested"]), min_value=0.0)
                         e_join = st.date_input("Join Date", value=pd.to_datetime(row["join_date"]).date())
                         e_note = st.text_area("Note", value=row["note"], height=100)
                         e_password = st.text_input("New Password (leave blank to keep current)", type="password")
-                        
                         col1, col2 = st.columns(2)
                         with col1:
                             update = st.form_submit_button("💾 Update", use_container_width=True)
                         with col2:
                             delete = st.form_submit_button("🗑️ Delete", use_container_width=True, type="primary")
-                        
                         if update:
-                            if e_password:
-                                update_client(edit_id, e_name, float(e_invested), e_join.isoformat(), e_note, e_password)
+                            if e_username and is_username_taken(e_username) and e_username != row["username"]:
+                                st.error("Username already taken by someone else")
                             else:
-                                update_client(edit_id, e_name, float(e_invested), e_join.isoformat(), e_note)
-                            st.success("✅ Client updated successfully!")
-                            st.rerun()
-                        
+                                if e_password:
+                                    update_client(edit_id, e_name, float(e_invested), e_join.isoformat(), e_note, e_password, e_username)
+                                else:
+                                    update_client(edit_id, e_name, float(e_invested), e_join.isoformat(), e_note, None, e_username)
+                                st.success("✅ Client updated successfully!")
+                                st.experimental_rerun()
                         if delete:
                             delete_client(edit_id)
                             st.success("✅ Client deleted successfully!")
-                            st.rerun()
+                            st.experimental_rerun()
             else:
                 st.info("📭 No clients yet. Add your first client to get started!")
-    
     with tab2:
         st.subheader("Profit Management")
-        
-        col1, col2 = st.columns([1, 2])
-        
+        col1, col2 = st.columns([1,2])
         with col1:
             with st.expander("➕ Add Daily Profit", expanded=True):
-                with st.form("add_profit_form"):
+                with st.form("add_profit_form_admin"):
                     p_date = st.date_input("Profit Date *", value=date_class.today())
                     p_total = st.number_input("Total Profit (Rp) *", value=0.0, format="%.2f")
                     p_note = st.text_area("Notes (optional)", height=100)
                     submit = st.form_submit_button("💾 Save Profit", use_container_width=True)
-                    
                     if submit:
                         add_profit(p_date.isoformat(), float(p_total), p_note)
                         st.success(f"✅ Profit for {p_date.strftime('%d %b %Y')} saved!")
-                        st.rerun()
-        
+                        st.experimental_rerun()
         with col2:
             profits_df = list_profits_df()
             if not profits_df.empty:
-                st.markdown("### 📊 Profit History")
-                
-                # Format the dataframe
                 display_df = profits_df.copy()
-                display_df["total_profit"] = display_df["total_profit"].apply(
-                    lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}"
-                )
+                display_df["total_profit"] = display_df["total_profit"].apply(lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}")
                 display_df["profit_date"] = pd.to_datetime(display_df["profit_date"]).dt.strftime("%d %b %Y")
-                
-                st.dataframe(
-                    display_df,
-                    use_container_width=True,
-                    height=400,
-                    hide_index=True
-                )
-                
+                st.dataframe(display_df, use_container_width=True, height=300)
                 st.markdown("### ✏️ Edit / Delete Profit Entry")
-                p_edit_id = st.selectbox(
-                    "Select Profit ID",
-                    profits_df["id"].tolist(),
-                    format_func=lambda x: f"ID {x} - {pd.to_datetime(profits_df[profits_df['id']==x]['profit_date'].iloc[0]).strftime('%d %b %Y')}"
-                )
-                
+                p_edit_id = st.selectbox("Select Profit ID", profits_df["id"].tolist(), format_func=lambda x: f"ID {x} - {pd.to_datetime(profits_df[profits_df['id']==x]['profit_date'].iloc[0]).strftime('%d %b %Y')}")
                 if p_edit_id:
                     prow = profits_df[profits_df["id"]==p_edit_id].iloc[0]
-                    
-                    with st.form("edit_profit_form"):
+                    with st.form("edit_profit_form_admin"):
                         pe_date = st.date_input("Profit Date", value=pd.to_datetime(prow["profit_date"]).date())
                         pe_total = st.number_input("Total Profit", value=float(prow["total_profit"]))
                         pe_note = st.text_area("Note", value=prow["note"], height=100)
-                        
                         col1, col2 = st.columns(2)
                         with col1:
                             update = st.form_submit_button("💾 Update", use_container_width=True)
                         with col2:
                             delete = st.form_submit_button("🗑️ Delete", use_container_width=True, type="primary")
-                        
                         if update:
                             update_profit(p_edit_id, pe_date.isoformat(), float(pe_total), pe_note)
                             st.success("✅ Profit updated successfully!")
-                            st.rerun()
-                        
+                            st.experimental_rerun()
                         if delete:
                             delete_profit(p_edit_id)
                             st.success("✅ Profit deleted successfully!")
-                            st.rerun()
+                            st.experimental_rerun()
             else:
                 st.info("📭 No profit entries yet. Add your first entry to get started!")
-    
     with tab3:
-        st.subheader("📊 Profit Share Distribution")
-        st.markdown("View detailed profit distribution across all clients and dates")
-        
-        clients_df = list_clients_df()
-        profits_df = list_profits_df()
-        
-        if clients_df.empty:
-            st.warning("⚠️ No clients registered yet. Please add clients first.")
-        elif profits_df.empty:
-            st.warning("⚠️ No profit entries yet. Please add profit entries first.")
-        else:
-            # Get timeseries data for all clients
-            result, _, _ = compute_client_timeseries()
-            
-            # Build comprehensive share profit table
-            share_data = []
-            
-            for client_id, client_ts in result.items():
-                client_info = clients_df[clients_df['id'] == client_id].iloc[0]
-                
-                if len(client_ts['dates']) > 0:
-                    for idx, date in enumerate(client_ts['dates']):
-                        profit_row = profits_df[pd.to_datetime(profits_df['profit_date']).dt.date == date]
-                        
-                        if not profit_row.empty:
-                            daily_profit = profit_row.iloc[0]['total_profit']
-                            
-                            # Calculate share for this date
-                            allocs = allocations_for_date(date.isoformat())
-                            client_alloc = allocs[allocs['id'] == client_id]
-                            
-                            if not client_alloc.empty and client_alloc.iloc[0]['active']:
-                                share_pct = client_alloc.iloc[0]['share']
-                                share_amount = daily_profit * share_pct
-                                cumulative_gain = client_ts['cumulative_gain'][idx]
-                                total_balance = client_info['invested'] + cumulative_gain
-                                
-                                share_data.append({
-                                    'Client ID': client_id,
-                                    'Client Name': client_info['name'],
-                                    'Profit Date': date,
-                                    'Initial Invested': client_info['invested'],
-                                    'Share (%)': share_pct * 100,
-                                    'Daily Profit': daily_profit,
-                                    'Share Profit': share_amount,
-                                    'Cumulative Profit': cumulative_gain,
-                                    'Total Balance': total_balance
-                                })
-            
-            if share_data:
-                share_df = pd.DataFrame(share_data)
-                
-                # Sorting and filtering options
-                st.markdown("### ⚙️ Filter & Sort Options")
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    sort_by = st.selectbox(
-                        "Sort by",
-                        ["Profit Date", "Client ID", "Share Profit", "Total Balance"],
-                        index=0,
-                        key="sort_by_select"
-                    )
-                
-                with col2:
-                    sort_order = st.radio("Order", ["Descending", "Ascending"], horizontal=True, key="sort_order_radio")
-                
-                with col3:
-                    filter_client = st.multiselect(
-                        "Filter by Client",
-                        options=clients_df['id'].tolist(),
-                        format_func=lambda x: f"ID {x} - {clients_df[clients_df['id']==x]['name'].iloc[0]}",
-                        key="filter_client_multi"
-                    )
-                
-                # Apply filters
-                display_df = share_df.copy()
-                if filter_client:
-                    display_df = display_df[display_df['Client ID'].isin(filter_client)]
-                
-                # Apply sorting
-                sort_col_map = {
-                    "Profit Date": "Profit Date",
-                    "Client ID": "Client ID",
-                    "Share Profit": "Share Profit",
-                    "Total Balance": "Total Balance"
-                }
-                ascending = sort_order == "Ascending"
-                display_df = display_df.sort_values(sort_col_map[sort_by], ascending=ascending)
-                
-                # Format for display
-                format_df = display_df.copy()
-                format_df['Profit Date'] = pd.to_datetime(format_df['Profit Date']).dt.strftime('%d %b %Y')
-                format_df['Initial Invested'] = format_df['Initial Invested'].apply(lambda x: f"Rp {x:,.0f}")
-                format_df['Share (%)'] = format_df['Share (%)'].apply(lambda x: f"{x:.2f}%")
-                format_df['Daily Profit'] = format_df['Daily Profit'].apply(
-                    lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}"
-                )
-                format_df['Share Profit'] = format_df['Share Profit'].apply(
-                    lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}"
-                )
-                format_df['Cumulative Profit'] = format_df['Cumulative Profit'].apply(
-                    lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}"
-                )
-                format_df['Total Balance'] = format_df['Total Balance'].apply(lambda x: f"Rp {x:,.0f}")
-                
-                # Display summary metrics
-                st.markdown("### 📈 Summary Statistics")
-                col1, col2, col3, col4 = st.columns(4)
-                
-                total_records = len(display_df)
-                total_share_profit = display_df['Share Profit'].sum()
-                avg_share_profit = display_df['Share Profit'].mean()
-                unique_clients = display_df['Client ID'].nunique()
-                
-                with col1:
-                    st.metric("Total Records", f"{total_records:,}")
-                with col2:
-                    st.metric("Total Shared Profit", f"Rp {total_share_profit:,.0f}")
-                with col3:
-                    st.metric("Avg Share Profit", f"Rp {avg_share_profit:,.0f}")
-                with col4:
-                    st.metric("Active Clients", unique_clients)
-                
-                st.markdown("---")
-                
-                # Display main table
-                st.markdown("### 📋 Detailed Share Profit Table")
-                st.dataframe(
-                    format_df,
-                    use_container_width=True,
-                    height=500,
-                    hide_index=True
-                )
-                
-                # Download button
-                st.markdown("---")
-                csv = display_df.to_csv(index=False)
-                today_str = date_class.today().isoformat()
-                st.download_button(
-                    label="📥 Download as CSV",
-                    data=csv,
-                    file_name=f"share_profit_distribution_{today_str}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-                
-                # Additional analytics
-                with st.expander("📊 View Analytics Charts"):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        # Profit distribution by client
-                        st.markdown("#### Total Profit by Client")
-                        client_totals = display_df.groupby(['Client ID', 'Client Name'])['Share Profit'].sum().reset_index()
-                        client_totals = client_totals.sort_values('Share Profit', ascending=False)
-                        
-                        fig = go.Figure(go.Bar(
-                            x=client_totals['Share Profit'],
-                            y=client_totals['Client Name'],
-                            orientation='h',
-                            marker=dict(
-                                color=client_totals['Share Profit'],
-                                colorscale='Viridis',
-                                showscale=False
-                            ),
-                            text=client_totals['Share Profit'].apply(lambda x: f"Rp {x:,.0f}"),
-                            textposition='outside',
-                            hovertemplate='<b>%{y}</b><br>Total: Rp %{x:,.0f}<extra></extra>'
-                        ))
-                        
-                        fig.update_layout(
-                            xaxis_title="Total Share Profit (Rp)",
-                            yaxis_title="Client",
-                            height=400,
-                            template="plotly_white",
-                            showlegend=False
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
-                    
-                    with col2:
-                        # Profit trend over time
-                        st.markdown("#### Profit Trend Over Time")
-                        date_totals = display_df.groupby('Profit Date')['Share Profit'].sum().reset_index()
-                        date_totals['Profit Date'] = pd.to_datetime(date_totals['Profit Date'])
-                        date_totals = date_totals.sort_values('Profit Date')
-                        
-                        fig = go.Figure(go.Scatter(
-                            x=date_totals['Profit Date'],
-                            y=date_totals['Share Profit'],
-                            mode='lines+markers',
-                            line=dict(width=3, color='#667eea'),
-                            marker=dict(size=8, color='#667eea'),
-                            fill='tozeroy',
-                            fillcolor='rgba(102, 126, 234, 0.2)',
-                            hovertemplate='<b>Date:</b> %{x}<br><b>Total:</b> Rp %{y:,.0f}<extra></extra>'
-                        ))
-                        
-                        fig.update_layout(
-                            xaxis_title="Date",
-                            yaxis_title="Total Share Profit (Rp)",
-                            height=400,
-                            template="plotly_white",
-                            showlegend=False
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("📭 No share profit data available yet.")
+        st.subheader("📊 Share Profit")
+        st.info("View profit share distribution (kept minimal here)")
+        st.write("Use Profit Management to add profit and Client Management to see clients.")
 
-# ----------------------- Client Personal Dashboard -----------------------
 def client_dashboard(client_id):
     client_data = get_client_by_id(client_id)
     if not client_data:
         st.error("Client data not found!")
         return
-    
     st.title(f"📊 Welcome, {client_data['name']}!")
     st.markdown("---")
-    
-    # Get client-specific data
     client_ts = get_client_timeseries(client_id)
     profits_df = list_profits_df()
-    
     if not client_ts or len(client_ts['dates']) == 0:
         st.info("📭 No profit data available yet. Please wait for admin to add profit entries.")
-        
-        # Show basic info
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown(f"""
-            <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <h3>💰 Your Investment</h3>
-                <p>Rp {client_data['invested']:,.0f}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"<div style='background:#667eea;padding:1rem;border-radius:8px;'><h3>💰 Investment</h3><p>Rp {client_data['invested']:,.0f}</p></div>", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"""
-            <div class="metric-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <h3>📅 Join Date</h3>
-                <p>{pd.to_datetime(client_data['join_date']).strftime('%d %b %Y')}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"<div style='background:#4facfe;padding:1rem;border-radius:8px;'><h3>📅 Join Date</h3><p>{pd.to_datetime(client_data['join_date']).strftime('%d %b %Y')}</p></div>", unsafe_allow_html=True)
         return
-    
-    # Calculate current values
     current_gain = client_ts['cumulative_gain'][-1]
     current_pct = client_ts['pct_return'][-1]
     current_value = client_data['invested'] + current_gain
-    
-    # Metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <h3>💰 Initial Investment</h3>
-            <p>Rp {client_data['invested']:,.0f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
+        st.markdown(f"<div style='background:#667eea;padding:1rem;border-radius:8px;'><h3>💰 Initial Investment</h3><p>Rp {client_data['invested']:,.0f}</p></div>", unsafe_allow_html=True)
     with col2:
-        st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-            <h3>📈 Total Profit</h3>
-            <p>Rp {current_gain:,.0f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
+        st.markdown(f"<div style='background:#f093fb;padding:1rem;border-radius:8px;'><h3>📈 Total Profit</h3><p>Rp {current_gain:,.0f}</p></div>", unsafe_allow_html=True)
     with col3:
-        st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-            <h3>💎 Current Value</h3>
-            <p>Rp {current_value:,.0f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
+        st.markdown(f"<div style='background:#4facfe;padding:1rem;border-radius:8px;'><h3>💎 Current Value</h3><p>Rp {current_value:,.0f}</p></div>", unsafe_allow_html=True)
     with col4:
-        color = "#43e97b" if current_pct >= 0 else "#e74c3c"
-        st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, {color} 0%, {'#38f9d7' if current_pct >= 0 else '#c0392b'} 100%);">
-            <h3>📊 ROI</h3>
-            <p>{current_pct:+.2f}%</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Performance Chart
+        st.markdown(f"<div style='background:#43e97b;padding:1rem;border-radius:8px;'><h3>📊 ROI</h3><p>{current_pct:+.2f}%</p></div>", unsafe_allow_html=True)
     st.subheader("📈 Your Investment Performance")
-    
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        chart_type = st.radio("Chart Type", ["Line", "Area"], horizontal=True)
-    
     fig = go.Figure()
-    
-    if chart_type == "Area":
-        fig.add_trace(go.Scatter(
-            x=client_ts['dates'],
-            y=client_ts['pct_return'],
-            mode='lines',
-            fill='tozeroy',
-            line=dict(width=2, color='#667eea'),
-            fillcolor='rgba(102, 126, 234, 0.3)',
-            hovertemplate='<b>Date:</b> %{x}<br><b>Return:</b> %{y:.2f}%<extra></extra>'
-        ))
-    else:
-        fig.add_trace(go.Scatter(
-            x=client_ts['dates'],
-            y=client_ts['pct_return'],
-            mode='lines+markers',
-            line=dict(width=3, color='#667eea'),
-            marker=dict(size=6, color='#667eea'),
-            hovertemplate='<b>Date:</b> %{x}<br><b>Return:</b> %{y:.2f}%<extra></extra>'
-        ))
-    
-    fig.update_layout(
-        xaxis_title="Date",
-        yaxis_title="Return (%)",
-        hovermode='x',
-        template="plotly_white",
-        height=400,
-        showlegend=False
-    )
-    
+    fig.add_trace(go.Scatter(x=client_ts['dates'], y=client_ts['pct_return'], mode='lines+markers', line=dict(width=3), marker=dict(size=6)))
+    fig.update_layout(xaxis_title="Date", yaxis_title="Return (%)", height=400)
     st.plotly_chart(fig, use_container_width=True)
-    
-    # Profit Distribution Table
     st.markdown("---")
     st.subheader("💼 Your Profit Distribution History")
-    
     if not profits_df.empty:
         allocations = []
         profits_df_sorted = profits_df.sort_values("profit_date")
-        
         for _, r in profits_df_sorted.iterrows():
             date_str = str(r["profit_date"])
             total_profit = r["total_profit"]
-            
-            # Get allocation for this date
             allocs = allocations_for_date(date_str)
             client_alloc = allocs[allocs["id"] == client_id]
-            
             if not client_alloc.empty:
                 share = client_alloc.iloc[0]["share"]
                 allocated = total_profit * share
                 active = client_alloc.iloc[0]["active"]
-                
                 allocations.append({
                     "Date": pd.to_datetime(date_str).strftime("%d %b %Y"),
                     "Total Profit": total_profit,
@@ -1104,260 +464,140 @@ def client_dashboard(client_id):
                     "Your Profit": allocated,
                     "Status": "✅ Active" if active else "❌ Not Active"
                 })
-        
         if allocations:
             alloc_df = pd.DataFrame(allocations)
-            
-            # Format display
             display_df = alloc_df.copy()
-            display_df["Total Profit"] = display_df["Total Profit"].apply(
-                lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}"
-            )
-            display_df["Your Profit"] = display_df["Your Profit"].apply(
-                lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}"
-            )
-            
+            display_df["Total Profit"] = display_df["Total Profit"].apply(lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}")
+            display_df["Your Profit"] = display_df["Your Profit"].apply(lambda x: f"Rp {x:,.0f}" if x >= 0 else f"-Rp {abs(x):,.0f}")
             st.dataframe(display_df, use_container_width=True, height=400, hide_index=True)
         else:
             st.info("No profit distribution data available for your account yet.")
 
-# ----------------------- Login Pages -----------------------
 def admin_login_page():
-    st.markdown("""
-    <div style='text-align: center; padding: 2rem;'>
-        <h1 style='color: #ffffff; font-size: 3rem;'>🔐</h1>
-        <h1 style='color: #ffffff;'>Admin Portal</h1>
-        <p style='color: #b8b9bf; font-size: 1.2rem;'>Secure Administrative Access</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col2:
-        with st.form("admin_login_form"):
-            st.markdown("### 🔑 Administrator Login")
-            username = st.text_input("Username", placeholder="Enter admin username")
-            password = st.text_input("Password", type="password", placeholder="Enter admin password")
-            submit = st.form_submit_button("🚀 Login as Admin", use_container_width=True)
-            
-            if submit:
-                if verify_admin(username, password):
-                    st.session_state["user_type"] = "admin"
-                    st.session_state["username"] = username
-                    st.success("✅ Admin login successful! Redirecting...")
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid admin credentials. Please try again.")
-        
-        #with st.expander("ℹ️ Default Admin Credentials"):
-            #st.code("Username: admin\nPassword: admin123")
-            #st.warning("⚠️ Change default credentials in production!")
+    st.markdown("<div style='text-align:center;padding:2rem;'><h1>🔐 Admin Portal</h1></div>", unsafe_allow_html=True)
+    with st.form("admin_login_form"):
+        st.markdown("### 🔑 Administrator Login")
+        username = st.text_input("Username", placeholder="Enter admin username")
+        password = st.text_input("Password", type="password", placeholder="Enter admin password")
+        submit = st.form_submit_button("🚀 Login as Admin")
+        if submit:
+            if verify_admin(username, password):
+                st.session_state["user_type"] = "admin"
+                st.session_state["username"] = username
+                st.success("✅ Admin login successful!")
+                st.experimental_rerun()
+            else:
+                st.error("❌ Invalid admin credentials.")
 
 def client_login_page():
-    st.markdown("""
-    <div style='text-align: center; padding: 2rem;'>
-        <h1 style='color: #ffffff; font-size: 3rem;'>👤</h1>
-        <h1 style='color: #ffffff;'>Client Portal</h1>
-        <p style='color: #b8b9bf; font-size: 1.2rem;'>Access Your Investment Dashboard</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
+    st.markdown("<div style='text-align:center;padding:2rem;'><h1>👤 Client Portal</h1></div>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.form("client_login_form"):
-            st.markdown("### 🔑 Client Login")
-            
-            client_id_input = st.text_input(
-                "Client ID",
-                placeholder="Enter your Client ID (e.g., 1, 2, 3)",
-                help="Your Client ID was provided by the administrator"
-            )
-            
-            password = st.text_input(
-                "Password",
-                type="password",
-                placeholder="Enter your password"
-            )
-            
-            submit = st.form_submit_button("🚀 Login", use_container_width=True)
-            
+            st.markdown("### 🔑 Client Login (username or id)")
+            identifier = st.text_input("Username or Client ID", placeholder="e.g. johndoe or 1")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            submit = st.form_submit_button("🚀 Login")
             if submit:
-                if not client_id_input:
-                    st.error("⚠️ Please enter your Client ID")
+                if not identifier:
+                    st.error("Please enter username or client ID")
                 elif not password:
-                    st.error("⚠️ Please enter your password")
+                    st.error("Please enter password")
                 else:
+                    logged_in = False
                     try:
-                        client_id = int(client_id_input)
-                        
-                        # Check if client exists
-                        client_data = get_client_by_id(client_id)
-                        if not client_data:
-                            st.error("❌ Client ID not found. Please check your ID and try again.")
-                        elif verify_client(client_id, password):
+                        cid = int(identifier)
+                        if verify_client_by_id(cid, password):
+                            client = get_client_by_id(cid)
                             st.session_state["user_type"] = "client"
-                            st.session_state["client_id"] = client_id
-                            st.session_state["client_name"] = client_data["name"]
-                            st.success(f"✅ Welcome, {client_data['name']}! Redirecting...")
-                            st.rerun()
+                            st.session_state["client_id"] = cid
+                            st.session_state["client_name"] = client["name"]
+                            st.success(f"✅ Welcome, {client['name']}!")
+                            st.experimental_rerun()
+                            logged_in = True
+                    except Exception:
+                        pass
+                    if not logged_in:
+                        if verify_client_by_username(identifier, password):
+                            client = get_client_by_username(identifier)
+                            st.session_state["user_type"] = "client"
+                            st.session_state["client_id"] = client["id"]
+                            st.session_state["client_name"] = client["name"]
+                            st.success(f"✅ Welcome, {client['name']}!")
+                            st.experimental_rerun()
                         else:
-                            st.error("❌ Invalid password. Please try again.")
-                    except ValueError:
-                        st.error("⚠️ Client ID must be a number")
-        
-        with st.expander("ℹ️ Need Help?"):
-            st.info("**First time logging in?** Your default password is: `client123`")
-            st.info("**Your Client ID** was provided by the administrator when your account was created.")
-            st.warning("⚠️ Please contact administrator to:")
-            st.markdown("""
-            - Get your Client ID if you don't have it
-            - Reset your password if forgotten
-            - Change your default password for security
-            """)
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Security notice
-        st.markdown("""
-        <div style='background: rgba(243, 156, 18, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12; color: #f39c12;'>
-            <strong>🔒 Security Notice:</strong><br>
-            Never share your Client ID or password with anyone. The administrator will never ask for your password.
-        </div>
-        """, unsafe_allow_html=True)
+                            st.error("❌ Invalid credentials or account not approved yet. If you just signed up, wait for admin approval.")
 
-# ----------------------- Main Application -----------------------
+    with st.expander("ℹ️ First time? Sign up here"):
+        st.markdown("If you don't have an account, use the Sign Up form in the client portal (or the button below).")
+
+def client_signup_page():
+    st.markdown("<div style='text-align:center;padding:2rem;'><h1>📝 Client Sign Up</h1></div>", unsafe_allow_html=True)
+    with st.form("client_signup_form"):
+        st.markdown("### Create your account (will be approved by admin)")
+        name = st.text_input("Full Name *")
+        username = st.text_input("Desired Username *")
+        password = st.text_input("Password *", type="password")
+        invested = st.number_input("Investment Amount (Rp) *", min_value=0.0, format="%.2f")
+        join_date = st.date_input("Join Date *", value=date_class.today())
+        note = st.text_area("Notes (optional)", height=100)
+        submit = st.form_submit_button("📝 Submit Signup Request")
+        if submit:
+            if not name or not username or not password or invested <= 0:
+                st.error("Please fill required fields and ensure investment > 0")
+            elif is_username_taken(username):
+                st.error("Username already taken or pending")
+            else:
+                add_pending_client(name, username, password, float(invested), join_date.isoformat(), note)
+                st.success("✅ Signup request submitted. Please wait for admin approval.")
+                st.info("Admin will see your request in the dashboard and can approve it. Once approved you can login using your username and password.")
+
 def main():
     init_db()
     load_css()
-    
-    # Initialize session state
     if "user_type" not in st.session_state:
         st.session_state["user_type"] = None
-    
-    # Sidebar Navigation
     with st.sidebar:
-        st.markdown("""
-        <div style='text-align: center; padding: 1rem 0; color: white;'>
-            <h1 style='color: white; font-size: 2.5rem;'>💰</h1>
-            <h2 style='color: white;'>Investment Console</h2>
-            <hr style='border: 1px solid rgba(255,255,255,0.2); margin: 1rem 0;'>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Show current user status
+        st.markdown("<div style='text-align:center;padding:1rem;'><h2>💰 Investment Console</h2></div>", unsafe_allow_html=True)
         if st.session_state["user_type"] == "admin":
-            st.success(f"✅ Logged in as Admin")
-            st.markdown(f"**User:** {st.session_state.get('username', 'Admin')}")
-            
-            if st.button("🚪 Logout", use_container_width=True):
+            st.success("Logged in as Admin")
+            st.markdown(f"**{st.session_state.get('username','admin')}**")
+            if st.button("🚪 Logout"):
                 st.session_state["user_type"] = None
                 st.session_state.pop("username", None)
-                st.rerun()
-                
+                st.experimental_rerun()
         elif st.session_state["user_type"] == "client":
-            st.success(f"✅ Logged in as Client")
-            st.markdown(f"**Name:** {st.session_state.get('client_name', 'Client')}")
-            st.markdown(f"**ID:** {st.session_state.get('client_id', 'N/A')}")
-            
-            if st.button("🚪 Logout", use_container_width=True):
+            st.success("Logged in as Client")
+            st.markdown(f"**{st.session_state.get('client_name','Client')}** (ID: {st.session_state.get('client_id')})")
+            if st.button("🚪 Logout"):
                 st.session_state["user_type"] = None
                 st.session_state.pop("client_id", None)
                 st.session_state.pop("client_name", None)
-                st.rerun()
+                st.experimental_rerun()
         else:
-            st.info("👋 Please login to continue")
-            
-            st.markdown("### 🎯 Choose Login Type")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("🔐 Admin", use_container_width=True):
-                    st.session_state["login_page"] = "admin"
-                    st.rerun()
-            with col2:
-                if st.button("👤 Client", use_container_width=True):
-                    st.session_state["login_page"] = "client"
-                    st.rerun()
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Quick Stats (visible to all)
-        if st.session_state["user_type"]:
-            metrics = get_dashboard_metrics()
-            st.markdown("### 📊 Quick Stats")
-            st.metric("Total Investors", metrics['total_clients'])
-            st.metric("Total Investment", 
-                     f"Rp {metrics['total_invested']/1000000:.1f}M" if metrics['total_invested'] >= 1000000 
-                     else f"Rp {metrics['total_invested']:,.0f}")
-            st.metric("Total Profit", 
-                     f"Rp {metrics['total_profit']/1000000:.1f}M" if abs(metrics['total_profit']) >= 1000000 
-                     else f"Rp {metrics['total_profit']:,.0f}")
-        
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        
-        # Footer
-        st.markdown("""
-        <div style='text-align: center; color: rgba(255,255,255,0.6); font-size: 0.8rem; padding: 1rem 0;'>
-            <hr style='border: 1px solid rgba(255,255,255,0.1); margin: 1rem 0;'>
-            <p>© 2025 Investment Consortium</p>
-            <p>Secure • Professional • Reliable</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Main Content Area - Route based on user type
+            st.info("Please login or sign up")
+            if st.button("🔐 Admin Login"):
+                st.session_state["login_page"] = "admin"
+                st.experimental_rerun()
+            if st.button("👤 Client Login"):
+                st.session_state["login_page"] = "client"
+                st.experimental_rerun()
+            if st.button("📝 Client Sign Up"):
+                st.session_state["login_page"] = "signup"
+                st.experimental_rerun()
     if st.session_state["user_type"] is None:
-        # Show login page based on selection
-        login_page_type = st.session_state.get("login_page", "select")
-        
-        if login_page_type == "admin":
+        page = st.session_state.get("login_page", "welcome")
+        if page == "admin":
             admin_login_page()
-        elif login_page_type == "client":
+        elif page == "client":
             client_login_page()
+        elif page == "signup":
+            client_signup_page()
         else:
-            # Welcome page
-            st.markdown("""
-            <div style='text-align: center; padding: 3rem 0;'>
-                <h1 style='color: #ffffff; font-size: 3.5rem;'>💰</h1>
-                <h1 style='color: #ffffff; font-size: 2.5rem;'>Investment Consortium Dashboard</h1>
-                <p style='color: #b8b9bf; font-size: 1.3rem; margin-top: 1rem;'>
-                    Professional Investment Management Platform
-                </p>
-                <hr style='width: 50%; margin: 2rem auto; border: 1px solid #2d3139;'>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            col1, col2, col3 = st.columns([1, 2, 1])
-            
-            with col2:
-                st.markdown("### 🎯 Welcome!")
-                st.markdown("""
-                Choose your login type to access the platform:
-                
-                **🔐 Admin Portal**
-                - Manage client accounts
-                - Record daily profits/losses
-                - View comprehensive analytics
-                - Full system access
-                
-                **👤 Client Portal**
-                - View your investment performance
-                - Track returns and profits
-                - Access personal dashboard
-                - Download statements
-                """)
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                st.info("👈 Please select your login type from the sidebar to continue")
-                
+            st.markdown("<div style='text-align:center;padding:3rem;'><h1>Welcome to Investment Consortium</h1></div>", unsafe_allow_html=True)
     elif st.session_state["user_type"] == "admin":
         admin_panel()
-        
     elif st.session_state["user_type"] == "client":
         client_dashboard(st.session_state["client_id"])
-
 if __name__ == "__main__":
     main()
