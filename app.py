@@ -1,7 +1,8 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
+from datetime import date as date_class
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -279,7 +280,7 @@ def allocations_for_date(target_date):
     if clients.empty:
         return pd.DataFrame(columns=["id","name","invested","join_date","active","share","alloc_profit"])
     clients["join_date"] = pd.to_datetime(clients["join_date"]).dt.date
-    target = datetime.strptime(target_date, "%Y-%m-%d").date()
+    target = datetime.strptime(target_date, "%Y-%m-%d").date() if isinstance(target_date, str) else target_date
     clients["active"] = clients["join_date"] <= target
     active_sum = clients.loc[clients["active"], "invested"].sum()
     if active_sum == 0:
@@ -424,7 +425,7 @@ def admin_panel():
                 with st.form("add_client_form"):
                     name = st.text_input("Client Name *")
                     invested = st.number_input("Investment Amount (Rp) *", min_value=0.0, format="%.2f")
-                    join_date = st.date_input("Join Date *", value=date.today())
+                    join_date = st.date_input("Join Date *", value=date_class.today())
                     password = st.text_input("Client Password *", type="password", help="Password for client login")
                     note = st.text_area("Notes (optional)", height=100)
                     submit = st.form_submit_button("💾 Add Client", use_container_width=True)
@@ -500,7 +501,7 @@ def admin_panel():
         with col1:
             with st.expander("➕ Add Daily Profit", expanded=True):
                 with st.form("add_profit_form"):
-                    p_date = st.date_input("Profit Date *", value=date.today())
+                    p_date = st.date_input("Profit Date *", value=date_class.today())
                     p_total = st.number_input("Total Profit (Rp) *", value=0.0, format="%.2f")
                     p_note = st.text_area("Notes (optional)", height=100)
                     submit = st.form_submit_button("💾 Save Profit", use_container_width=True)
@@ -701,12 +702,11 @@ def admin_panel():
                 # Download button
                 st.markdown("---")
                 csv = display_df.to_csv(index=False)
-                from datetime import date as date_class
-                today_date = date_class.today()
+                today_str = date_class.today().isoformat()
                 st.download_button(
                     label="📥 Download as CSV",
                     data=csv,
-                    file_name=f"share_profit_distribution_{today_date.isoformat()}.csv",
+                    file_name=f"share_profit_distribution_{today_str}.csv",
                     mime="text/csv",
                     use_container_width=True
                 )
